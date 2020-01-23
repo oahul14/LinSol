@@ -70,7 +70,7 @@ T Matrix<T>::det()
 {
 	T* det_result(0);
 
-	return *T;
+	return *det_result;
 }
 
 template<class T>
