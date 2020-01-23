@@ -42,25 +42,69 @@ CSRMatrix<T>::~CSRMatrix()
 template <class T>
 void CSRMatrix<T>::printMatrix() 
 { 
-   std::cout << "Printing matrix" << std::endl;
-   std::cout << "Values: ";
-   for (int j = 0; j< this->nnzs; j++)
-   {  
-      std::cout << this->values[j] << " ";      
+   // std::cout << "Printing matrix" << std::endl;
+   // std::cout << "Values: ";
+   // for (int j = 0; j< this->nnzs; j++)
+   // {  
+   //    std::cout << this->values[j] << " ";      
+   // }
+   // std::cout << std::endl;
+   // std::cout << "row_position: ";
+   // for (int j = 0; j< this->rows+1; j++)
+   // {  
+   //    std::cout << this->row_position[j] << " ";      
+   // }
+   // std::cout << std::endl;   
+   // std::cout << "col_index: ";
+   // for (int j = 0; j< this->nnzs; j++)
+   // {  
+   //    std::cout << this->col_index[j] << " ";      
+   // }
+   // std::cout << std::endl;  
+
+   auto* values = new T[this->rows * this->cols];
+   for (int i = 0; i < this->rows; i++)
+   {
+      for (int j = 0; j < this->cols; j++)
+      {
+         values[i * this->rows + j] = 0;
+      }
    }
-   std::cout << std::endl;
-   std::cout << "row_position: ";
-   for (int j = 0; j< this->rows+1; j++)
-   {  
-      std::cout << this->row_position[j] << " ";      
+
+   auto* row_index = new int[nnzs];
+
+   int counter(0);
+   for (int j = 1; j < this->rows + 1; j++)
+   {
+      int num = this->row_position[j] - this->row_position[j-1];
+      for (int i = counter; i < counter + num; i++)
+      {
+         row_index[i] = j - 1;
+      }
+      counter += num;
    }
-   std::cout << std::endl;   
-   std::cout << "col_index: ";
-   for (int j = 0; j< this->nnzs; j++)
-   {  
-      std::cout << this->col_index[j] << " ";      
+
+   //cout << "-------set up row index-------";
+   
+   for (int i = 0; i < this->nnzs; i++)
+   {
+      values[row_index[i] * this->rows + this->col_index[i]] = this->values[i];
    }
-   std::cout << std::endl;   
+   delete[] row_index;
+   
+   //cout << "-------assigned none zeroes-------" << endl;
+
+   std::cout << "\nPrinting sparse matrix:" << std::endl;
+	for (int i = 0; i < this->rows; i++)
+	{
+		std::cout << std::endl;
+		for (int j = 0; j < this->cols; j++)
+		{
+			// row-major ordering here
+			std::cout << values[j + i * this->cols] << " ";
+		}
+	}
+	std::cout << std::endl;
 }
 
 // Do a matrix-vector product
