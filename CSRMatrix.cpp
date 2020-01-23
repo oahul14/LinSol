@@ -83,16 +83,12 @@ void CSRMatrix<T>::printMatrix()
       }
       counter += num;
    }
-
-   //cout << "-------set up row index-------";
    
    for (int i = 0; i < this->nnzs; i++)
    {
       values[row_index[i] * this->rows + this->col_index[i]] = this->values[i];
    }
    delete[] row_index;
-   
-   //cout << "-------assigned none zeroes-------" << endl;
 
    std::cout << "\nPrinting sparse matrix:" << std::endl;
 	for (int i = 0; i < this->rows; i++)
