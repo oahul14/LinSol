@@ -21,7 +21,7 @@
 	* compare if solver for sparse and dense are consistent
 	* using actual from other resources
 4. compare containers of ONE solver, includes:
-	* vector<vector>
+	* vector of vectors
 	* vector
 	* pointers
 	* smart pointers
