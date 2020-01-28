@@ -1,29 +1,18 @@
 #include "solver.h"
 
+
 template<class T>
 void swap_rows(Matrix<T>& A, int& j, int& k)
 {
 	const int N = A.cols;
-	auto* jline = new double[N];
-	for (int i = 0; i < N; i++)
+	for (int i = 0; i < A.cols; i++)
 	{
-		jline[i] = A.values[j * A.rows + i];
+		T* num = new T;
+		*num = A.values[k * A.rows + i];
+		A.values[k * A.rows + i] = A.values[j * A.rows + i];
+		A.values[j * A.rows + i] = *num;
+		delete num;
 	}
-
-	auto* kline = new double[N];
-	for (int i = 0; i < N; i++)
-	{
-		kline[i] = A.values[k * A.rows + i];
-	}
-
-	for (int i = 0; i < N; i++)
-	{
-		A.values[k * A.rows + i] = jline[i];
-		A.values[j * A.rows + i] = kline[i];
-	}
-
-	delete[] jline;
-	delete[] kline;
 }
 
 // find the index of the largest value
@@ -66,6 +55,7 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 
 	for (int k = 0; k < m - 1; k++)
 	{
+
 		int j = argmax(k, A);
 		swap_rows(A, j, k);
 		swap_rows(P_, j, k);
@@ -74,7 +64,7 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 		{
 			const double s = A.values[i * m + k] / A.values[k * m + k];
 			L.values[i * m + k] = s;
-			for (j = k; j < m; j++)
+			for (int j = k; j < m; j++)
 			{
 				A.values[i * m + j] -= A.values[k * m + j] * s;
 			}
@@ -145,10 +135,10 @@ void LU_solver(Matrix<T>& A, T* x, T* b)
 	auto* P = new Matrix<T>(m, m, true);
 	LU_decomposition_pp(A, *L, *P);
 	// print out P, L, U
-	//L->printMatrix();
+	L->printMatrix();
 	
 	// A is now the upper triangle
-	//A.printMatrix();
+	A.printMatrix();
 	// get the inverse i.e. the transpose of P
 	P->transpose(*P);
 	//P->printMatrix();

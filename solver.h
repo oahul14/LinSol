@@ -8,7 +8,6 @@ using namespace std;
 template<class T>
 void swap_rows(Matrix<T>& A, int& j, int& k);
 
-
 template<class T>
 int argmax(int& k, Matrix<T>& A);
 
