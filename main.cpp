@@ -13,18 +13,18 @@ using namespace std;
 
 int main()
 {
+
 	const int rows(5), cols(5);
 	const int m(5);
 	//// testing our Matrix class
-	double array[25] = { 1,0,3,7,2,1,0,4,5,4,1,-2,4,1,6,2, 6, 9,1,5,2,3,6,8,0 };
+	double array[25] = { 1, 0, 3, 7, 2, 1, 0, 4, 5, 4, 1, -2, 4, 1, 6, 2, 6, 9, 1, 5, 2, 3, 6, 8, 0 };
 
 	auto* A = new Matrix<double>(rows, cols, array);
 
 	A->printMatrix();
 
-	// double barray[] = { 1,2,-3,8,3 };
 	vector<double> barray = { 1, 2, -3, 8, 3};
-	auto* b = new double[m*1];
+	auto* b = new double[m];
 	cout << "\nRHS: " << endl;
 	for (int i = 0; i < m; i++)
 	{
@@ -32,9 +32,21 @@ int main()
 		cout << *(b + i) << endl; 
 	}
 	cout << endl;
-	auto* x = new double[m * 1];
 
-	LU_solver(*A, x, b);
+	auto* x = new double[m];
+
+	///// SOLVERS /////
+
+	// Just uncomment the method to be used
+
+	// LU_solver(*A, x, b);
+	gauss_elimination(*A, x, b);
+
+	cout << "Gauss Elimination Solution: \n";
+	for (int i = 0; i < m; i++)
+	{
+		cout << "x" << i << ": " << x[i] << endl;
+	}
 	
 	delete A;
 	delete[] b;
@@ -42,18 +54,3 @@ int main()
 
 	return 0;
 }
-
-// using namespace std;
-
-// int& assignInt()
-// {
-// 	int *i = new int;
-// 	return *i;
-// }
-
-// int main()
-// {
-// 	int i = assignInt();
-// 	cout << "values of i: " << i << endl;
-// 	delete i;
-// }

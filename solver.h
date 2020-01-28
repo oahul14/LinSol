@@ -23,3 +23,6 @@ void forward_substitution(Matrix<T>& L, Matrix<T>& x, Matrix<T>& b);
 
 template<class T>
 void LU_solver(Matrix<T>& A, Matrix<T>& x, Matrix<T>& b);
+
+template<class T>
+void gauss_elimination(Matrix<T>& A, Matrix<T>& x, Matrix<T>& b);

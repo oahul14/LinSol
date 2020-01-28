@@ -155,7 +155,6 @@ void LU_solver(Matrix<T>& A, T* x, T* b)
 
 	auto* pinvb = new double[m * 1];
 	P->matVecMult(b, pinvb);
-
 	auto* y = new double[m * 1];
 	forward_substitution(*L, pinvb, y);
 	auto* solution = new double[m * 1];
@@ -172,4 +171,67 @@ void LU_solver(Matrix<T>& A, T* x, T* b)
 	delete[] pinvb;
 	delete[] y;
 	delete[] solution;
+}
+
+template<class T>
+void gauss_elimination(Matrix<T>& A, T* x, T* b)
+{
+	if (A.rows != A.cols)
+	{
+		cerr << "Cannot apply Gaussian Elimination on non-square matrix. \n";
+		return;
+	}
+
+	const int m = A.cols;
+	int i, j, k;
+
+    for (i = 0; i < m; i++) {                   //Pivotisation
+        for (k = i + 1; k < m; k++) {
+            if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
+                for (j = 0; j < m; j++) {
+                    auto* temp = new double;
+                    *temp = A.values[i * m + j];
+                    A.values[i * m + j] = A.values[k * m + j];
+                    A.values[k * m + j] = *temp;
+                    delete temp;
+                }
+                auto* temp2 = new double;
+                *temp2 = b[i];
+                *(b + i) = b[k];
+                *(b + k) = *temp2;
+                delete temp2;
+            }
+        }
+    }
+
+	// Perform Gauss-Elimination
+    for (i = 0; i < m - 1; i++) {
+        for (k = i + 1; k < m; k++) {
+            auto* t = new double;
+            *t = A.values[k * m + i] / A.values[i * m + i];
+            for (j = 0; j < m; j++) {
+
+				//make the elements below the pivot elements equal to zero or eliminate the variables
+                A.values[k * m + j] = A.values[k * m + j] - *t * A.values[i * m + j];
+            }
+            *(b + k) = b[k] - *t * b[i];
+            delete t;
+        }
+    }
+
+	//back-substitution
+	for (i = m - 1; i >= 0; i--) {
+
+		// make the variable to be calculated equal to the rhs of the last equation
+		*(x + i) = b[i];
+		for (j = i + 1; j < m; j++) {
+
+			// subtract all the lhs values except the coefficient of the variable whose value is being calculated
+			if (j != i) {
+				*(x + i) = x[i] - A.values[i * m + j] * x[j];
+			}
+		}
+		//now finally divide the rhs by the coefficient of the variable to be calculated
+		*(x + i) = x[i] / A.values[i * m + i];
+	}
 }
