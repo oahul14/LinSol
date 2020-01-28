@@ -1,5 +1,8 @@
 # acse-5-assignment-nan
 
+*Added Gauss-Elimination solver.h, solver.cpp and main.cpp files.
+
+
 ### Current schedule
 
 #### By Sunday
