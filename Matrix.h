@@ -1,6 +1,7 @@
 #pragma once    
 #include <vector>
 #include <tuple>
+#include <memory>
 
 using namespace std;
 
@@ -38,11 +39,11 @@ public:
 	void matMatMult(Matrix& mat_right, Matrix& output);
 	void matVecMult(T* vec, T* output);
 	void matMatMult_colMajor(Matrix& mat_right, Matrix& output);
-
+	
 	/////// public variables
 	// matrix size;
 	// explicitly using the c++11 nullptr;
-	T* values = nullptr;
+	unique_ptr<T[]> values;
 	int rows = -1;
 	int cols = -1;
 

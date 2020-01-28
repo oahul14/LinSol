@@ -1,7 +1,6 @@
 #include <iostream>
 #include "Matrix.h"
 
-
 // constructor 1
 template<class T>
 Matrix<T>::Matrix(int rows, int cols, bool preallocate): 
@@ -10,14 +9,17 @@ Matrix<T>::Matrix(int rows, int cols, bool preallocate):
 	// if we want to handle memory ourselves
 	if (this->preallocated)
 	{
-		this->values = new T[this->size_of_values];
+		this->values.reset(new T[this->size_of_values]);
 	 }
 };
 
 //constructor 2
 template<class T>
 Matrix<T>::Matrix(int rows, int cols, T* values_ptr): 
-	rows(rows), cols(cols), size_of_values(rows * cols), values(values_ptr) {};
+	rows(rows), cols(cols), size_of_values(rows * cols) 
+{
+	this->values.reset(values_ptr);
+};
 
 // copy constructor
 template<class T>
@@ -25,7 +27,7 @@ Matrix<T>::Matrix(Matrix& B)
 {
 	this->cols = B.cols;
 	this->rows = B.rows;
-	this->values = B.values;
+	this->values.reset(B.values);
 	this->size_of_values = B.size_of_values;
 }
 
@@ -33,9 +35,9 @@ Matrix<T>::Matrix(Matrix& B)
 template<class T>
 Matrix<T>::~Matrix()
 {
-	if (this->preallocated){
-		delete[] this->values;
-	}
+	// if (this->preallocated){
+	// 	delete[] this->values;
+	// }
 };
 
 template<class T>

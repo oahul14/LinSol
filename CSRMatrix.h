@@ -1,5 +1,6 @@
 #pragma once
 #include "Matrix.h"
+#include <memory>
 
 template <class T>
 class CSRMatrix: public Matrix<T>
@@ -21,9 +22,11 @@ public:
    // Perform some operations with our matrix
    void matVecMult(double *input, double *output);   
 
+   void LU_decomposition(CSRMatrix<T>& A);
+
    // Explicitly using the C++11 nullptr here
-   int *row_position = nullptr;
-   int *col_index = nullptr;
+   unique_ptr<int[]> row_position;
+   unique_ptr<int[]> col_index;
 
    // How many non-zero entries we have in the matrix
    int nnzs=-1;

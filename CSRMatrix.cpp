@@ -14,26 +14,29 @@ CSRMatrix<T>::CSRMatrix(int rows, int cols, int nnzs, bool preallocate): Matrix<
    if (this->preallocated)
    {
       // Must remember to delete this in the destructor
-      this->values = new T[this->nnzs];
-      this->row_position = new int[this->rows+1];
-      this->col_index = new int[this->nnzs];
+      this->values.reset(new T[this->nnzs]);
+      this->row_position.reset(new int[this->rows+1]);
+      this->col_index.reset(new int[this->nnzs]);
    }
 }
 
 // Constructor - now just setting the value of our T pointer
 template <class T>
-CSRMatrix<T>::CSRMatrix(int rows, int cols, int nnzs, T *values_ptr, int *row_position, int *col_index): Matrix<T>(rows, cols, values_ptr), nnzs(nnzs), row_position(row_position), col_index(col_index)
-{}
+CSRMatrix<T>::CSRMatrix(int rows, int cols, int nnzs, T *values_ptr, int *row_position, int *col_index): Matrix<T>(rows, cols, values_ptr), nnzs(nnzs)
+{
+    this->row_position.reset(row_position);
+    this->col_index.reset(col_index);
+}
 
 // destructor
 template <class T>
 CSRMatrix<T>::~CSRMatrix()
 {
    // Delete the values array
-   if (this->preallocated){
+   /*if (this->preallocated){
       delete[] this->row_position;
       delete[] this->col_index;
-   }
+   }*/
    // The super destructor is called after we finish here
    // This will delete this->values if preallocated is true
 }
@@ -42,65 +45,25 @@ CSRMatrix<T>::~CSRMatrix()
 template <class T>
 void CSRMatrix<T>::printMatrix() 
 { 
-   // std::cout << "Printing matrix" << std::endl;
-   // std::cout << "Values: ";
-   // for (int j = 0; j< this->nnzs; j++)
-   // {  
-   //    std::cout << this->values[j] << " ";      
-   // }
-   // std::cout << std::endl;
-   // std::cout << "row_position: ";
-   // for (int j = 0; j< this->rows+1; j++)
-   // {  
-   //    std::cout << this->row_position[j] << " ";      
-   // }
-   // std::cout << std::endl;   
-   // std::cout << "col_index: ";
-   // for (int j = 0; j< this->nnzs; j++)
-   // {  
-   //    std::cout << this->col_index[j] << " ";      
-   // }
-   // std::cout << std::endl;  
-
-   auto* values = new T[this->rows * this->cols];
-   for (int i = 0; i < this->rows; i++)
-   {
-      for (int j = 0; j < this->cols; j++)
-      {
-         values[i * this->rows + j] = 0;
-      }
+   std::cout << "Printing matrix" << std::endl;
+   std::cout << "Values: ";
+   for (int j = 0; j< this->nnzs; j++)
+   {  
+      std::cout << this->values[j] << " ";      
    }
-
-   auto* row_index = new int[nnzs];
-
-   int counter(0);
-   for (int j = 1; j < this->rows + 1; j++)
-   {
-      int num = this->row_position[j] - this->row_position[j-1];
-      for (int i = counter; i < counter + num; i++)
-      {
-         row_index[i] = j - 1;
-      }
-      counter += num;
+   std::cout << std::endl;
+   std::cout << "row_position: ";
+   for (int j = 0; j< this->rows+1; j++)
+   {  
+      std::cout << this->row_position[j] << " ";      
    }
-   
-   for (int i = 0; i < this->nnzs; i++)
-   {
-      values[row_index[i] * this->rows + this->col_index[i]] = this->values[i];
+   std::cout << std::endl;   
+   std::cout << "col_index: ";
+   for (int j = 0; j< this->nnzs; j++)
+   {  
+      std::cout << this->col_index[j] << " ";      
    }
-   delete[] row_index;
-
-   std::cout << "\nPrinting sparse matrix:" << std::endl;
-	for (int i = 0; i < this->rows; i++)
-	{
-		std::cout << std::endl;
-		for (int j = 0; j < this->cols; j++)
-		{
-			// row-major ordering here
-			std::cout << values[j + i * this->cols] << " ";
-		}
-	}
-	std::cout << std::endl;
+   std::cout << std::endl;  
 }
 
 // Do a matrix-vector product
