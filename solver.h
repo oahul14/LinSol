@@ -15,10 +15,10 @@ template<class T>
 void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_);
 
 template<class T>
-void backward_substitution(Matrix<T>& U, Matrix<T>& x, Matrix<T>& b);
+void backward_substitution(Matrix<T>& U, T* b, T* output);
 
 template<class T>
-void forward_substitution(Matrix<T>& L, Matrix<T>& x, Matrix<T>& b);
+void forward_substitution(Matrix<T>& L, T* b, T* output);
 
 template<class T>
-void LU_solver(Matrix<T>& A, Matrix<T>& x, Matrix<T>& b);
+void LU_solver(Matrix<T>& A, T* x, T* b);
