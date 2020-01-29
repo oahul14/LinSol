@@ -235,3 +235,135 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
 		*(x + i) = x[i] / A.values[i * m + i];
 	}
 }
+
+template<class T>
+void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
+	// gauss_idel(Matrix<T> & A, T * x, T * b, er, urf, nmax, rmx)
+
+	// solves systems of linear eqs., with the Gauss-Seidel method
+
+	/*
+	// input
+
+	n = number of eqs.
+	a  = matrix of coefficients
+	b  = matrix of constants
+	x  = initial values for the unknown (nq values)
+	er = termination criterion
+	urf = relaxation factor
+	nmax = maximum number of iterations
+
+	// output
+
+	x = solution
+	rmx = maximum residual (verification)
+	*/
+
+	if (A.rows != A.cols)
+	{
+		cerr << "Cannot apply Gauss-Seidel on non-square matrix. \n";
+		return;
+	}
+
+	const int n = A.cols;
+	const int m = A.cols;
+	int i, j, k, niter;
+	double sum, xold;
+	int nmax = 1000;
+	double rmx = 0.0;
+
+	// initialisation of x
+	for (i = 0; i < n; i++) {
+		*(x + i) = 0.0;
+	}
+
+	for (i = 0; i < m; i++) {                   //Pivotisation
+		for (k = i + 1; k < m; k++) {
+			if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
+				for (j = 0; j < m; j++) {
+					auto* temp = new double;
+					*temp = A.values[i * m + j];
+					A.values[i * m + j] = A.values[k * m + j];
+					A.values[k * m + j] = *temp;
+					delete temp;
+				}
+				auto* temp2 = new double;
+				*temp2 = b[i];
+				*(b + i) = b[k];
+				*(b + k) = *temp2;
+				delete temp2;
+			}
+		}
+		cout << endl;
+	}
+
+	cout << "\nThe matrix after Pivotisation is:\n";
+	for (i = 0; i < n; i++) {          //print the new matrix
+		for (j = 0; j < n; j++)
+			cout << A.values[i * n + j] << " ";
+		cout << "\n";
+	}
+
+
+	// start of iterations
+	for (niter = 0; niter < nmax; niter++) {
+
+		double ea = 0.0;
+
+		cout << "iter " << niter << endl;
+
+		// new x's calculation 
+		for (i = 0; i < n; i++) {
+			xold = x[i];
+			sum = b[i];
+
+			cout << "i " << i << endl;
+
+			for (j = 0; j <= i - 1; j++) {
+				sum += - A.values[i * n + j] * x[j];
+				cout << "iter j1: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
+			}
+
+			for (j = i + 1; j < n; j++) {
+				sum += - A.values[i * n + j] * x[j];
+				cout << "iter j2: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
+			}
+
+			*(x + i) = sum / A.values[i * n + i];
+
+			// error and underelaxation
+			// cout << *(x + i) << " " << endl;
+			double ern = abs(*(x + i) - xold);
+
+
+			// cout << i << " " <<  ern << endl;
+			// cout << endl;
+			ea = __max(ea, ern);
+			*(x + i) = *(x + i) * urf + xold * (1. - urf);
+			cout << *(x + i) << " " << endl;
+		}
+
+		// Checks for exit
+		if (ea < er) {
+			break;
+		}
+
+	}
+
+	if (niter >= nmax) {
+		cout << "Warning! Iterations' limit";
+	}
+
+	// Verification
+	for (i = 0; i < n; i++) {
+
+		sum = - b[i];
+
+		for (j = 0; j < n; j++) {
+			sum += A.values[i * n + j] * x[j];
+		}
+		// cout << abs(sum) << " " << rmx << endl;
+		rmx = __max(abs(sum), rmx);
+		// cout << rmx;
+	}
+}
