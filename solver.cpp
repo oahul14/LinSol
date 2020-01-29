@@ -277,7 +277,8 @@ void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
 		*(x + i) = 0.0;
 	}
 
-	for (i = 0; i < m; i++) {                   //Pivotisation
+	//Pivotisation
+	for (i = 0; i < m; i++) {
 		for (k = i + 1; k < m; k++) {
 			if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
 				for (j = 0; j < m; j++) {
@@ -297,50 +298,39 @@ void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
 		cout << endl;
 	}
 
-	cout << "\nThe matrix after Pivotisation is:\n";
-	for (i = 0; i < n; i++) {          //print the new matrix
-		for (j = 0; j < n; j++)
-			cout << A.values[i * n + j] << " ";
-		cout << "\n";
-	}
-
-
 	// start of iterations
 	for (niter = 0; niter < nmax; niter++) {
 
 		double ea = 0.0;
 
-		cout << "iter " << niter << endl;
+		// cout << "iter " << niter << endl;  // print iterations until convergence
 
 		// new x's calculation 
 		for (i = 0; i < n; i++) {
 			xold = x[i];
 			sum = b[i];
 
-			cout << "i " << i << endl;
+			// cout << "i " << i << endl;
 
 			for (j = 0; j <= i - 1; j++) {
 				sum += - A.values[i * n + j] * x[j];
-				cout << "iter j1: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
+				// cout << "iter j1: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
 			}
 
 			for (j = i + 1; j < n; j++) {
 				sum += - A.values[i * n + j] * x[j];
-				cout << "iter j2: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
+				// cout << "iter j2: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
 			}
 
 			*(x + i) = sum / A.values[i * n + i];
 
 			// error and underelaxation
-			// cout << *(x + i) << " " << endl;
 			double ern = abs(*(x + i) - xold);
-
 
 			// cout << i << " " <<  ern << endl;
 			// cout << endl;
 			ea = __max(ea, ern);
 			*(x + i) = *(x + i) * urf + xold * (1. - urf);
-			cout << *(x + i) << " " << endl;
 		}
 
 		// Checks for exit
@@ -354,16 +344,12 @@ void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
 		cout << "Warning! Iterations' limit";
 	}
 
-	// Verification
-	for (i = 0; i < n; i++) {
-
-		sum = - b[i];
-
-		for (j = 0; j < n; j++) {
-			sum += A.values[i * n + j] * x[j];
-		}
-		// cout << abs(sum) << " " << rmx << endl;
-		rmx = __max(abs(sum), rmx);
-		// cout << rmx;
-	}
+	//// Verification
+	//for (i = 0; i < n; i++) {
+	//	sum = - b[i];
+	//	for (j = 0; j < n; j++) {
+	//		sum += A.values[i * n + j] * x[j];
+	//	}
+	//	rmx = __max(abs(sum), rmx);
+	//}
 }
