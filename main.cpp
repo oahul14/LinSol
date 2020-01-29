@@ -15,10 +15,10 @@ using namespace std;
 
 int main()
 {
-
-	const int rows(5), cols(5);
-	// const int m(4);
-	const int m(5);
+	const int no = 5;
+	const int rows(no), cols(no);
+	const int m(no);
+	// const int m(5);
 	//// testing our Matrix class
 	// double array[25] = { 1, 0, 3, 7, 2, 1, 0, 4, 5, 4, 1, -2, 4, 1, 6, 2, 6, 9, 1, 5, 2, 3, 6, 8, 0 };
 
@@ -26,7 +26,9 @@ int main()
 	double array[25] = { 22, 0, 3, 7, 2, 1, 20, 4, 5, 4, 1, -2, 24, 1, 6, 2, 6, 9, 21, 5, 2, 3, 6, 8, 20 };
 
 	// tridiagonal
-	// double array[12] = { 3, 9, 2, 0, 2, 3, 5, 3, 0, 6, 2, 4 };
+	// double array[12] = { 0, 6, 2, 4, 2, 3, 5, 3, 3, 9, 2, 0 };
+
+	// Intialisation of A, b and x
 	Matrix<double>* A = new Matrix<double>(rows, cols, array);
 	//std::cout << typeid(A).name() << std::endl;
 	A->printMatrix();
@@ -34,6 +36,10 @@ int main()
 	vector<double> barray = { 1, 2, -3, 8, 3 };
 	// vector<double> barray = { 21, 69, 34, 22};
 	auto* b = new double[m];
+	double* x = new double[m];
+
+
+	// Printing
 	cout << "\nRHS: " << endl;
 	for (int i = 0; i < m; i++)
 	{
@@ -42,7 +48,7 @@ int main()
 	}
 	cout << endl;
 
-	double* x = new double[m];
+	
 
 	///// SOLVERS /////
 
@@ -50,7 +56,8 @@ int main()
 
 	// LU_solver(*A, x, b);
 	// gauss_elimination(*A, x, b);
-	gauss_seidel(*A, x, b, 1e-3, 0.1);
+	gauss_seidel(*A, x, b, 1e-3, 0.9);
+	// cholesky(*A, x, b, 1);
 	// thomas(*A, x, b);
 
 	cout << "Solution: \n";
@@ -65,3 +72,4 @@ int main()
 
 	return 0;
 }
+
