@@ -8,23 +8,32 @@
 #include "CSRMatrix.h"
 #include "CSRMatrix.cpp"
 #include <vector>
+#include <typeinfo>
+#include <type_traits>
 
 using namespace std;
 
 int main()
 {
+
 	const int rows(5), cols(5);
+	// const int m(4);
 	const int m(5);
 	//// testing our Matrix class
-	double array[25] = { 1,0,3,7,2,1,0,4,5,4,1,-2,4,1,6,2, 6, 9,1,5,2,3,6,8,0 };
+	// double array[25] = { 1, 0, 3, 7, 2, 1, 0, 4, 5, 4, 1, -2, 4, 1, 6, 2, 6, 9, 1, 5, 2, 3, 6, 8, 0 };
 
-	auto* A = new Matrix<double>(rows, cols, array);
+	// diagonal dominance
+	double array[25] = { 22, 0, 3, 7, 2, 1, 20, 4, 5, 4, 1, -2, 24, 1, 6, 2, 6, 9, 21, 5, 2, 3, 6, 8, 20 };
 
+	// tridiagonal
+	// double array[12] = { 3, 9, 2, 0, 2, 3, 5, 3, 0, 6, 2, 4 };
+	Matrix<double>* A = new Matrix<double>(rows, cols, array);
+	//std::cout << typeid(A).name() << std::endl;
 	A->printMatrix();
 
-	// double barray[] = { 1,2,-3,8,3 };
-	vector<double> barray = { 1, 2, -3, 8, 3};
-	auto* b = new double[m*1];
+	vector<double> barray = { 1, 2, -3, 8, 3 };
+	// vector<double> barray = { 21, 69, 34, 22};
+	auto* b = new double[m];
 	cout << "\nRHS: " << endl;
 	for (int i = 0; i < m; i++)
 	{
@@ -32,9 +41,23 @@ int main()
 		cout << *(b + i) << endl; 
 	}
 	cout << endl;
-	auto* x = new double[m * 1];
 
-	LU_solver(*A, x, b);
+	double* x = new double[m];
+
+	///// SOLVERS /////
+
+	// Just uncomment the method to be used
+
+	// LU_solver(*A, x, b);
+	// gauss_elimination(*A, x, b);
+	gauss_seidel(*A, x, b, 1e-3, 0.1);
+	// thomas(*A, x, b);
+
+	cout << "Solution: \n";
+	for (int i = 0; i < m; i++)
+	{
+		cout << "x" << i << ": " << x[i] << endl;
+	}
 	
 	delete A;
 	delete[] b;
@@ -42,18 +65,3 @@ int main()
 
 	return 0;
 }
-
-// using namespace std;
-
-// int& assignInt()
-// {
-// 	int *i = new int;
-// 	return *i;
-// }
-
-// int main()
-// {
-// 	int i = assignInt();
-// 	cout << "values of i: " << i << endl;
-// 	delete i;
-// }
