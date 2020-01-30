@@ -28,3 +28,9 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b);
 
 template<class T>
 void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf);
+
+template<class T>
+void thomas(Matrix<T>& A, T* x, T* r);
+
+template<class T>
+void cholesky(Matrix<T>& A, T* x, T* b, const int MD);
