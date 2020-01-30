@@ -11,19 +11,29 @@
 
 using namespace std;
 
+
+
 int main()
 {
-	const int rows(5), cols(5);
-	const int m(5);
+	const int rows(9), cols(9);
+	const int m(9);
 	//// testing our Matrix class
-	double array[25] = { 1,0,3,7,2,1,0,4,5,4,1,-2,4,1,6,2, 6, 9,1,5,2,3,6,8,0 };
+	double array[81] = {	1,0,6,0,3,0,0,0,0,
+							0,2,0,4,0,0,5,0,0,
+							6,0,3,9,0,0,0,1,0,
+							0,4,9,4,7,0,1,0,0,
+							3,0,0,7,5,3,0,4,0,
+							0,0,0,0,3,3,2,0,0,
+							0,5,0,1,0,2,9,0,0,
+							0,0,1,0,4,0,0,6,0,
+							0,0,0,0,0,0,0,0,3 };
 
 	auto* A = new Matrix<double>(rows, cols, array);
 
 	A->printMatrix();
 
 	// double barray[] = { 1,2,-3,8,3 };
-	vector<double> barray = { 1, 2, -3, 8, 3};
+	vector<double> barray = { 1, 2, -3, 8, 3, 6, 9, 4, 2};
 	auto* b = new double[m*1];
 	cout << "\nRHS: " << endl;
 	for (int i = 0; i < m; i++)
@@ -43,7 +53,7 @@ int main()
 	return 0;
 }
 
-// using namespace std;
+/*// using namespace std;
 
 // int& assignInt()
 // {
@@ -56,4 +66,4 @@ int main()
 // 	int i = assignInt();
 // 	cout << "values of i: " << i << endl;
 // 	delete i;
-// }
+// }*/

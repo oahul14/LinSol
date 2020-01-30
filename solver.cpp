@@ -55,11 +55,14 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 
 	for (int k = 0; k < m - 1; k++)
 	{
-
+		//cout << "\nLoop over rows+1: i = " << k << endl;
+		//cout << "---------------" << endl;
 		int j = argmax(k, A);
 		swap_rows(A, j, k);
 		swap_rows(P_, j, k);
 		swap_rows(L, j, k);
+		//A.printMatrix();
+		//L.printMatrix();
 		for (int i = k + 1; i < m; i++)
 		{
 			const double s = A.values[i * m + k] / A.values[k * m + k];
@@ -69,6 +72,8 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 				A.values[i * m + j] -= A.values[k * m + j] * s;
 			}
 		}
+		//A.printMatrix();
+		//L.printMatrix();
 	}
 
 	// add diagnal eye into L
@@ -94,8 +99,10 @@ void backward_substitution(Matrix<T>& U, T* b, T* output)
 		T s(0);
 		for (int j = k + 1; j < m; j++)
 		{
+			cout << s << " ";
 			s += U.values[k * m + j] * output[j];
 		}
+		cout << endl;
 		output[k] = (b[k] - s) / U.values[k * m + k];
 	}
 }
@@ -104,21 +111,29 @@ template<class T>
 void forward_substitution(Matrix<T>& L, T* b, T* output)
 {
 	const int m = L.rows;
-
+	cout << "Printing pinvb: " << endl;
+	for (int i = 0; i < m; i++)
+	{
+		cout << b[i] << " ";
+	}
+	cout << endl;
 	for (int k = 0; k < m; k++)
 	{
 		T s(0);
 		for (int j = 0; j < k; j++)
 		{
+			cout << s << " ";
 			s += L.values[k * m + j] * output[j];
 		}
+		cout << endl;
 		output[k] = (b[k] - s) / L.values[k * m + k];
 	}
-	/*cout << "Printing forward sub vector output: " << endl;
+	cout << "Printing forward sub vector output: " << endl;
 	for (int i = 0; i < m; i++)
 	{
 		cout << " " << output[i];
-	}*/
+	}
+	cout << endl;
 }
 
 template<class T>
@@ -141,25 +156,24 @@ void LU_solver(Matrix<T>& A, T* x, T* b)
 	A.printMatrix();
 	// get the inverse i.e. the transpose of P
 	P->transpose(*P);
-	//P->printMatrix();
+	P->printMatrix();
 
 	auto* pinvb = new double[m * 1];
 	P->matVecMult(b, pinvb);
 
 	auto* y = new double[m * 1];
 	forward_substitution(*L, pinvb, y);
-	auto* solution = new double[m * 1];
-	backward_substitution(A, y, solution);
+	backward_substitution(A, y, x);
 
 	cout << "LU Solution: \n";
 	for (int i = 0; i < m; i++)
 	{
-		cout << "x" << i << ": " << solution[i] << endl;
+		cout << "x" << i << ": " << x[i] << endl;
 	}
 
 	delete L;
 	delete P;
 	delete[] pinvb;
 	delete[] y;
-	delete[] solution;
+	/*delete[] solution;*/
 }
