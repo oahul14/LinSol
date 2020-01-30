@@ -353,3 +353,165 @@ void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
 	//	rmx = __max(abs(sum), rmx);
 	//}
 }
+
+template<class T>
+void thomas(Matrix<T>& A, T* x, T* r) {
+	int i;
+	double term;
+	const int n = A.cols;
+	A.values[2 * n] = A.values[2 * n] / A.values[1 * n];
+	r[0] = r[0] / A.values[1 * n];
+
+	//-- forward elimination
+	for (i = 1; i < n; i++) {
+		term = A.values[1 * n + i] - A.values[0 * n + i] * A.values[2 * n + i - 1];
+		A.values[2 * n + i] = A.values[2 * n + i] / term;
+		r[i] = (r[i] - A.values[0 * n + i] * r[i - 1]) / term;
+	}
+	//-- back substitution
+	x[n - 1] = r[n - 1];
+	for (i = n - 2; i >= 0; i--) {
+			x[i] = r[i] - A.values[2 * n + i] * x[i + 1];
+		}
+}
+
+template<class T>
+void cholesky(Matrix<T>& A, T* x, T* b, const int MD) {
+
+	int i, j, k;
+	int n = A.rows;
+	// Dense matrix
+	cout << "\nThe matrix is:\n";
+	for (i = 0; i < n; i++) {          //print the new matrix
+		for (j = 0; j < n; j++) {
+			cout << A.values[i * n + j] << " ";
+		}
+		cout << endl;
+	}
+	if (MD == 1) {
+		for (k = 0; k < n; k++) {
+			A.values[k * n + k] = sqrt(A.values[k * n + k]);
+
+			cout << "\nThe matrix becomes (1) :\n";
+			for (i = 0; i < n; i++) {          //print the new matrix
+				for (j = 0; j < n; j++) {
+					cout << A.values[i * n + j] << " ";
+				}
+				cout << endl;
+			}
+
+			for (i = k + 1; i < n; i++) {
+				A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
+			}
+
+			cout << "\nThe matrix becomes (2) :\n";
+			for (i = 0; i < n; i++) {          //print the new matrix
+				for (j = 0; j < n; j++) {
+					cout << A.values[i * n + j] << " ";
+				}
+				cout << endl;
+			}
+
+			for (j = k + 1; j < n; j++) {
+				for (i = j; i < n; i++) {
+					A.values[i * n + j] -= A.values[i * n + k] * A.values[j * n + k];
+				}
+			}
+			cout << "\nThe matrix becomes (3) :\n";
+			for (i = 0; i < n; i++) {          //print the new matrix
+				for (j = 0; j < n; j++) {
+					cout << A.values[i * n + j] << " ";
+				}
+				cout << endl;
+			}
+		}
+	}
+
+
+	// Sparse matrix
+	if (MD == 0) {
+		for (k = 0; k < n; k++) {
+			A.values[k * n + k] = sqrt(A.values[k * n + k]);
+
+			int nsk = 0;
+			int * sk = new int[n];
+			for (i = k + 1; i < n; i++) {
+				A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
+				if (A.values[i * n + k] != 0.) {
+					
+					*(sk + nsk) = i;
+					nsk += 1;
+				}
+			}
+
+			for (j = sk[0]; j <= sk[nsk]; j++) {  // !!!
+				for (i = j; i <= sk[nsk]; i++) {  // !!!
+					A.values[i * n + j] = A.values[i * n + j] - A.values[i * n + k] * A.values[j * n + k];
+				}
+			}
+		}
+	}
+
+	//-- elements of [L]^T  ------------------------------
+	for (i = 0; i < n - 1; i++) {   // !!!!!!!!!!!!
+		for (j = i + 1; j < n; j++) {
+			A.values[i * n + j] = A.values[j * n + i];
+		}
+	}
+
+
+
+	double *au = new double[n * n];
+	double *al = new double[n * n];
+
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			al[i * n + j] = 0.;
+			au[i * n + j] = 0.;
+			if (i >= j) {
+				al[i * n + j] = A.values[i * n + j];
+			}
+			if (i <= j) {
+				au[i * n + j] = A.values[i * n + j];
+			}
+		}
+	}
+
+	//au->transpose(*au);
+	//auto* pinvb = new double[n];
+	//au->matVecMult(b, pinvb);
+	//auto* y = new double[n * 1];
+	//forward_substitution(*au, pinvb, y);
+	//auto* solution = new double[n];
+	//backward_substitution(A, y, solution);
+
+	//delete al;
+	//delete au;
+	//delete[] pinvb;
+	//delete[] y;
+	//delete[] solution;
+
+
+	double *y = new double[n];
+	double sum;
+	//-- fw substitution
+	*y = b[0] / al[0];
+	for (i = 1; i < n; i++) {
+		sum = b[i];
+		for (j = 0; j < i - 1; j++) {
+			sum -= al[i * n + j] * y[j];
+		}
+		*(y + i) = sum / al[i * n + i];
+	}
+
+	//-- bw substitution
+	*(x + n - 1) = y[n - 1] / au[n * n - 1];
+	for (i = n - 2; i >= 0; i--) {
+		sum = y[i];
+		for (j = i + 1; j < n; j++) {
+			sum -= au[i * n + j] * x[j];
+		}
+		*(x + i) = sum / au[i * n + i];
+	}
+	delete[] y;
+}
