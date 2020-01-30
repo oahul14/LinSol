@@ -184,7 +184,6 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
 
 	const int m = A.cols;
 	int i, j, k;
-
     for (i = 0; i < m; i++) {                   //Pivotisation
         for (k = i + 1; k < m; k++) {
             if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
@@ -219,21 +218,7 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
         }
     }
 
-	//back-substitution
-	for (i = m - 1; i >= 0; i--) {
-
-		// make the variable to be calculated equal to the rhs of the last equation
-		*(x + i) = b[i];
-		for (j = i + 1; j < m; j++) {
-
-			// subtract all the lhs values except the coefficient of the variable whose value is being calculated
-			if (j != i) {
-				*(x + i) = x[i] - A.values[i * m + j] * x[j];
-			}
-		}
-		//now finally divide the rhs by the coefficient of the variable to be calculated
-		*(x + i) = x[i] / A.values[i * m + i];
-	}
+	backward_substitution(A, b, x);
 }
 
 template<class T>
@@ -269,7 +254,7 @@ void gauss_seidel(Matrix<T>& A, T* x, T* b, T er, T urf) {
 	const int m = A.cols;
 	int i, j, k, niter;
 	double sum, xold;
-	int nmax = 1000;
+	int nmax = 10000;
 	double rmx = 0.0;
 
 	// initialisation of x
@@ -381,48 +366,19 @@ void cholesky(Matrix<T>& A, T* x, T* b, const int MD) {
 	int i, j, k;
 	int n = A.rows;
 	// Dense matrix
-	cout << "\nThe matrix is:\n";
-	for (i = 0; i < n; i++) {          //print the new matrix
-		for (j = 0; j < n; j++) {
-			cout << A.values[i * n + j] << " ";
-		}
-		cout << endl;
-	}
+
 	if (MD == 1) {
 		for (k = 0; k < n; k++) {
 			A.values[k * n + k] = sqrt(A.values[k * n + k]);
 
-			cout << "\nThe matrix becomes (1) :\n";
-			for (i = 0; i < n; i++) {          //print the new matrix
-				for (j = 0; j < n; j++) {
-					cout << A.values[i * n + j] << " ";
-				}
-				cout << endl;
-			}
-
 			for (i = k + 1; i < n; i++) {
 				A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
-			}
-
-			cout << "\nThe matrix becomes (2) :\n";
-			for (i = 0; i < n; i++) {          //print the new matrix
-				for (j = 0; j < n; j++) {
-					cout << A.values[i * n + j] << " ";
-				}
-				cout << endl;
 			}
 
 			for (j = k + 1; j < n; j++) {
 				for (i = j; i < n; i++) {
 					A.values[i * n + j] -= A.values[i * n + k] * A.values[j * n + k];
 				}
-			}
-			cout << "\nThe matrix becomes (3) :\n";
-			for (i = 0; i < n; i++) {          //print the new matrix
-				for (j = 0; j < n; j++) {
-					cout << A.values[i * n + j] << " ";
-				}
-				cout << endl;
 			}
 		}
 	}
@@ -459,59 +415,30 @@ void cholesky(Matrix<T>& A, T* x, T* b, const int MD) {
 		}
 	}
 
-
-
-	double *au = new double[n * n];
-	double *al = new double[n * n];
+	auto* au = new Matrix<T>(n, n, true);
+	auto* al = new Matrix<T>(n, n, true);
 
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
-			al[i * n + j] = 0.;
-			au[i * n + j] = 0.;
+			al->values[i * n + j] = 0.;
+			au->values[i * n + j] = 0.;
 			if (i >= j) {
-				al[i * n + j] = A.values[i * n + j];
+				al->values[i * n + j] = A.values[i * n + j];
 			}
 			if (i <= j) {
-				au[i * n + j] = A.values[i * n + j];
+				au->values[i * n + j] = A.values[i * n + j];
 			}
 		}
 	}
 
-	//au->transpose(*au);
-	//auto* pinvb = new double[n];
-	//au->matVecMult(b, pinvb);
-	//auto* y = new double[n * 1];
-	//forward_substitution(*au, pinvb, y);
-	//auto* solution = new double[n];
-	//backward_substitution(A, y, solution);
+	auto* y = new double[n];
+	*y = b[0] / al->values[0];
 
-	//delete al;
-	//delete au;
-	//delete[] pinvb;
-	//delete[] y;
-	//delete[] solution;
+	forward_substitution(*al, b, y);
+	backward_substitution(*au, y, x);
+	
 
-
-	double *y = new double[n];
-	double sum;
-	//-- fw substitution
-	*y = b[0] / al[0];
-	for (i = 1; i < n; i++) {
-		sum = b[i];
-		for (j = 0; j < i - 1; j++) {
-			sum -= al[i * n + j] * y[j];
-		}
-		*(y + i) = sum / al[i * n + i];
-	}
-
-	//-- bw substitution
-	*(x + n - 1) = y[n - 1] / au[n * n - 1];
-	for (i = n - 2; i >= 0; i--) {
-		sum = y[i];
-		for (j = i + 1; j < n; j++) {
-			sum -= au[i * n + j] * x[j];
-		}
-		*(x + i) = sum / au[i * n + i];
-	}
+	delete al;
+	delete au;
 	delete[] y;
 }
