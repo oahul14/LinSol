@@ -16,13 +16,17 @@ public:
 
    // Print out the values in our matrix
 	virtual void printMatrix();
+    void printDense();
 
    // Perform some operations with our matrix
    void matMatMult(CSRMatrix<T>& mat_right, CSRMatrix<T>& output);
    // Perform some operations with our matrix
    void matVecMult(double *input, double *output);   
 
-   void LU_decomposition(CSRMatrix<T>& A);
+   void LU_decomposition(int* p_col);
+   void forward_substitution(T* b, T* output);
+   void backward_substitution(T* b, T* output);
+   void LU_solver(T* b, T* output);
 
    // Explicitly using the C++11 nullptr here
    unique_ptr<int[]> row_position;
