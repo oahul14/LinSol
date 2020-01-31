@@ -33,4 +33,10 @@ template<class T>
 void thomas(Matrix<T>& A, T* x, T* r);
 
 template<class T>
-void cholesky(Matrix<T>& A, T* x, T* b, const int MD);
+void cholesky_fact(Matrix<T>& A, T* x, T* b);
+
+template<class T>
+void cholesky_dense(Matrix<T>& A, T* x, T* b);
+
+template<class T>
+void cholesky_sparse(Matrix<T>& A, T* x, T* b);
