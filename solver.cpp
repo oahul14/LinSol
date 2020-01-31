@@ -361,53 +361,10 @@ void thomas(Matrix<T>& A, T* x, T* r) {
 }
 
 template<class T>
-void cholesky(Matrix<T>& A, T* x, T* b, const int MD) {
+void cholesky_fact(Matrix<T>& A, T* x, T* b) {
 
 	int i, j, k;
-	int n = A.rows;
-	// Dense matrix
-
-	if (MD == 1) {
-		for (k = 0; k < n; k++) {
-			A.values[k * n + k] = sqrt(A.values[k * n + k]);
-
-			for (i = k + 1; i < n; i++) {
-				A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
-			}
-
-			for (j = k + 1; j < n; j++) {
-				for (i = j; i < n; i++) {
-					A.values[i * n + j] -= A.values[i * n + k] * A.values[j * n + k];
-				}
-			}
-		}
-	}
-
-
-	// Sparse matrix
-	if (MD == 0) {
-		for (k = 0; k < n; k++) {
-			A.values[k * n + k] = sqrt(A.values[k * n + k]);
-
-			int nsk = 0;
-			int * sk = new int[n];
-			for (i = k + 1; i < n; i++) {
-				A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
-				if (A.values[i * n + k] != 0.) {
-					
-					*(sk + nsk) = i;
-					nsk += 1;
-				}
-			}
-
-			for (j = sk[0]; j <= sk[nsk]; j++) {  // !!!
-				for (i = j; i <= sk[nsk]; i++) {  // !!!
-					A.values[i * n + j] = A.values[i * n + j] - A.values[i * n + k] * A.values[j * n + k];
-				}
-			}
-		}
-	}
-
+	const int n = A.rows;
 	//-- elements of [L]^T  ------------------------------
 	for (i = 0; i < n - 1; i++) {   // !!!!!!!!!!!!
 		for (j = i + 1; j < n; j++) {
@@ -436,9 +393,65 @@ void cholesky(Matrix<T>& A, T* x, T* b, const int MD) {
 
 	forward_substitution(*al, b, y);
 	backward_substitution(*au, y, x);
-	
 
 	delete al;
 	delete au;
 	delete[] y;
+}
+
+template<class T>
+void cholesky_dense(Matrix<T>& A, T* x, T* b) {
+
+	int i, j, k;
+	const int n = A.rows;
+
+	// Dense matrix
+	for (k = 0; k < n; k++) {
+		A.values[k * n + k] = sqrt(A.values[k * n + k]);
+		for (i = k + 1; i < n; i++) {
+			A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
+		}
+
+		for (j = k + 1; j < n; j++) {
+			for (i = j; i < n; i++) {
+				A.values[i * n + j] -= A.values[i * n + k] * A.values[j * n + k];
+			}
+		}
+	}
+	cholesky_fact(A, x, b);
+}
+
+
+template<class T>
+void cholesky_sparse(Matrix<T>& A, T* x, T* b) {
+
+	int i, j, k;
+	const int n = A.rows;
+
+	int* sk = new int[n];
+
+	// Sparse matrix
+	for (k = 0; k < n; k++) {
+		A.values[k * n + k] = sqrt(A.values[k * n + k]);
+
+		int nsk = 0;
+		for (i = k + 1; i < n; i++) {
+
+			A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
+			if (A.values[i * n + k] != 0.) {
+				nsk += 1;
+				sk[nsk] = i;
+			}
+		}
+
+		for (j = sk[1]; j <= sk[nsk]; j++) {
+			for (i = j; i <= sk[nsk]; i++) {
+				A.values[i * n + j] = A.values[i * n + j] - A.values[i * n + k] * A.values[j * n + k];
+			}
+		}
+	}
+
+	delete[] sk;
+
+	cholesky_fact(A, x, b);
 }
