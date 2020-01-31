@@ -201,7 +201,7 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
     {
         for (int j = 0; j < cols; j++)
         {
-            if (i = j) //the diagonal values
+            if (i == j) //the diagonal values
             {
                 if (dom) ran_sparse[i * cols + j] = rand() % 100 + 50; //set the dominant matrix
                 else ran_sparse[i * cols + j] = rand() % 10 + 1;

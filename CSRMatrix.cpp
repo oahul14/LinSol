@@ -254,7 +254,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         //cout << "How many non-zeros in the max value row: " << nnzs_max_row << endl;
         //cout << endl;
 
-        // create two pointers to store current row and max value row non-zeros and their col indices;
+        // create pointers to store current row and max value row non-zeros and their col indices;
         /*vector<double> temp_current_value(nnzs_current);
         vector<int> temp_current_col(nnzs_current);
         vector<double> temp_max_value(nnzs_max_row);
@@ -449,9 +449,6 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                 // if the current row has 0 non-zeros, no change would be made
                 if (nnzs_current_iright > 0)
                 {
-                    //vector<double> temp_modified_value;
-                    //vector<int> temp_modified_col;
-
                     // find what will be the nnzs of found row
                     int nnzs_found_iright_new = nnzs_current_iright + nnzs_found_iright;
                     for (int na = current_iright_start_index; na < current_iright_start_index + nnzs_current_iright; na++)
@@ -468,8 +465,9 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                     int num_add = nnzs_found_iright_new - nnzs_found_iright;
                     cout << "num_add: " << num_add << endl;
 
-                    vector<double> temp_value;
-                    vector<int> temp_col;
+                    vector<double> temp_value(0);
+                    vector<int> temp_col(0);
+                    cout << "vector sizes 1: " << temp_col.size() << "  " << temp_value.size() << endl;
                     for (int c = current_iright_start_index; c < current_iright_start_index + nnzs_current_iright; c++)
                     {
                         int col_c = this->col_index[c];
@@ -494,30 +492,74 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                             temp_col.push_back(this->col_index[c]);
                         }
                     }
+                    cout << "vector sizes 2: " << temp_col.size() << "  " << temp_value.size() << endl;
                     
-                    for (int f = found_iright_start_index + nnzs_found_iright - 1; f >= found_iright_start_index; f--)
+//                    for (int f = found_iright_start_index + nnzs_found_iright - 1; f >= found_iright_start_index; f--)
+//                    {
+//                        if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
+//                        {
+//                            //cout << this->values[f] << endl;
+//                            for (int c = current_iright_start_index; c < current_iright_start_index + nnzs_current_iright; c++)
+//                            {
+//                                //cout << this->col_index[c-1] << "-----" << this->col_index[c] << endl;
+//                                if (this->col_index[f] > this->col_index[c])
+//                                {
+//                                    if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
+//                                    {
+//                                        temp_value.push_back(this->values[f]);
+//                                        temp_col.push_back(this->col_index[f]);
+//                                    }
+//                                }
+//                                else if ((this->col_index[f] > this->col_index[c-1]) && (this->col_index[f] < this->col_index[c]))
+//                                {
+//                                    if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
+//                                    {
+//                                        temp_value.insert(temp_value.begin() + (c - current_iright_start_index ), this->values[f]);
+//                                        temp_col.insert(temp_col.begin() + (c - current_iright_start_index ), this->col_index[f]);
+//                                        cout << "Middle Temp value / col: " << this->values[f] << " / " << this->col_index[f] << endl;
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+                    
+                    // get full record of found non-zeros at right of the row NO. i
+                    // first get the overlapped points and calculate it
+                    // then for
+                    for (int f = found_iright_start_index; f < found_iright_start_index + nnzs_found_iright; f++)
                     {
                         if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
                         {
-                            //cout << this->values[f] << endl;
-                            for (int c = current_iright_start_index; c < current_iright_start_index + nnzs_current_iright; c++)
+                            temp_col.push_back(this->col_index[f]);
+                            temp_value.push_back(this->values[f]);
+                        }
+                    }
+                    cout << "vector sizes 3: " << temp_col.size() << "  " << temp_value.size() << endl;
+                    if (temp_col.size() != nnzs_found_iright_new)
+                    {
+                        cerr << "Invalid new length of found nnzs iright." << endl;
+                        return;
+                    }
+                    
+                    unique_ptr<int> tempc(new int);
+                    unique_ptr<T> tempv(new T);
+                    for (int ik = 1; ik < nnzs_found_iright_new; ik++)
+                    {
+                        for (int jk = 1; jk < nnzs_found_iright_new - ik; jk++)
+                        {
+                            if (temp_col[jk] > temp_col[jk + 1])
                             {
-                                //cout << this->col_index[c-1] << "-----" << this->col_index[c] << endl;
-                                if (this->col_index[f] > this->col_index[c])
-                                {
-                                    temp_value.push_back(this->values[f]);
-                                    temp_col.push_back(this->col_index[f]);
-                                }
-                                else if ((this->col_index[f] > this->col_index[c-1]) && (this->col_index[f] < this->col_index[c]))
-                                {
-                                    temp_value.insert(temp_value.begin() + (c - current_iright_start_index ), this->values[f]);
-                                    temp_col.insert(temp_col.begin() + (c - current_iright_start_index ), this->col_index[f]);
-                                    cout << "Middle Temp value / col: " << this->values[f] << " / " << this->col_index[f] << endl;
-                                }
+                                *tempc = temp_col[jk];
+                                *tempv = temp_value[jk];
+                                
+                                temp_col[jk] = temp_col[jk + 1];
+                                temp_value[jk] = temp_value[jk + 1];
+                                
+                                temp_col[jk + 1] = *tempc;
+                                temp_value[jk + 1] = *tempv;
                             }
                         }
                     }
-                    
                     
                     if (num_add < 0)
                     {
