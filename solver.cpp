@@ -426,9 +426,10 @@ template<class T>
 void cholesky_sparse(Matrix<T>& A, T* x, T* b) {
 
 	int i, j, k;
-	const int n = A.rows;
+	int n = A.rows;
 
-	int* sk = new int[n];
+	int* sk = new int[n + 1];
+	// int sk[n];
 
 	// Sparse matrix
 	for (k = 0; k < n; k++) {
@@ -436,17 +437,21 @@ void cholesky_sparse(Matrix<T>& A, T* x, T* b) {
 
 		int nsk = 0;
 		for (i = k + 1; i < n; i++) {
-
 			A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
+
 			if (A.values[i * n + k] != 0.) {
+				
 				nsk += 1;
 				sk[nsk] = i;
+				
 			}
 		}
 
-		for (j = sk[1]; j <= sk[nsk]; j++) {
-			for (i = j; i <= sk[nsk]; i++) {
-				A.values[i * n + j] = A.values[i * n + j] - A.values[i * n + k] * A.values[j * n + k];
+		if (nsk > 0); {
+			for (j = sk[1]; j <= sk[nsk]; j++) {
+				for (i = j; i <= sk[nsk]; i++) {
+					A.values[i * n + j] = A.values[i * n + j] - A.values[i * n + k] * A.values[j * n + k];
+				}
 			}
 		}
 	}
