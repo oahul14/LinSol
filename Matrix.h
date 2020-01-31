@@ -31,11 +31,9 @@ public:
 
 	// some basic functions
 	void transpose(Matrix<T>& itself);
-	T det();
-	//void inverse(Matrix<T>& itself);
-	//void add(Matrix<T>& right_mat, Matrix<T>& output); // or operator overload
-	//void sub(Matrix<T>& right_mat, Matrix<T>& output); // or operator overload
-	//void scalar_mult(T* s, Matrix<T>& output);
+    // generate random n x n matrix
+    void genRanDense(bool dom);
+    void genRanSparse(double sparsity, bool dom);
 	void matMatMult(Matrix& mat_right, Matrix& output);
 	void matVecMult(T* vec, T* output);
 	void matMatMult_colMajor(Matrix& mat_right, Matrix& output);
