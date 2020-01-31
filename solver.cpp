@@ -57,14 +57,14 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 
 	for (int k = 0; k < m - 1; k++)
 	{
-		cout << "\nLoop over rows+1: i = " << k << endl;
-		cout << "---------------" << endl;
+//		cout << "\nLoop over rows+1: i = " << k << endl;
+//		cout << "---------------" << endl;
 		int j = argmax(k, A);
 		swap_rows(A, j, k);
 		swap_rows(P_, j, k);
 		swap_rows(L, j, k);
-		A.printMatrix();
-		L.printMatrix();
+//		A.printMatrix();
+//		L.printMatrix();
 		for (int i = k + 1; i < m; i++)
 		{
 			const double s = A.values[i * m + k] / A.values[k * m + k];
@@ -74,8 +74,8 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 				A.values[i * m + j] -= A.values[k * m + j] * s;
 			}
 		}
-		A.printMatrix();
-		L.printMatrix();
+//		A.printMatrix();
+//		L.printMatrix();
 	}
 
 	// add diagnal eye into L
@@ -361,7 +361,7 @@ void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, T er, T urf) {
 }
 
 template<class T>
-void jacobi_dense(Matrix<T>& A, T* x, T* b, T maxit, T tolerance)
+void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
 //user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
 {
     //set the condition that matrix A must be a square matrix
@@ -380,9 +380,13 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, T maxit, T tolerance)
         //cerr << x_new_array[i]<< endl;
     }
 
-    unique_ptr<T[]> total_sum(new double[A.rows]);
-    for (int k = 0; k < maxit; k++) //record the number of iteration
+    unique_ptr<T[]> total_sum(new T[A.rows]);
+    for (int k = 0; k <maxit; k++) //record the number of iteration
     {
+        for (int i = 0; i < A.rows; i++)
+        {
+            total_sum[i] = 0;
+        }
         for (int i = 0; i < A.rows; i++)
         {
             //Define a multiple production by A[i,:i] and x[:i]
@@ -424,14 +428,14 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, T maxit, T tolerance)
         {
             for (int j = 0; j < A.cols; j++)
             {
-                total_sum[i] += A.values[i * A.cols+j] * x_new_array[j];
+                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
+
             }
-            cout << "total_sum= " << total_sum[i];
             pow_sum += pow(total_sum[i] - b[i], 2);
         }
         //calculate the error
         double residual = sqrt(pow_sum);
-        cout << "residual" << k << " = " << residual << endl;
+//        cout << "residual" << k << " = " << residual << endl;
         if (residual < tolerance)
         {
             break;
@@ -439,7 +443,7 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, T maxit, T tolerance)
         for (int i = 0; i < A.rows; i++)
         {
             x[i] = x_new_array[i];
-            cerr << x[i] << endl;
+            cout << x[i] << endl;
         }
     }
 }
@@ -502,12 +506,10 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
             {
                 total_sum[i] += A.values[counter] * x[A.col_index[counter]];
             }
-            //cout << "total_sum= " << total_sum[i];
             pow_sum += pow(total_sum[i] - b[i], 2);
         }
         //calculate the error
         double residual = sqrt(pow_sum);
-        //cout << "residual" << k << " = " << residual << endl;
         if (residual < tolerance)
         {
             break;
@@ -540,9 +542,10 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
         row_diff[i] = A.row_position[i + 1] - A.row_position[i];
     }
 
-    unique_ptr<T[]> sum(new T[m]);
-    unique_ptr<T[]> total_sum(new double[A.rows]);
-    for (int k = 0; k < maxit; k++) //the number of iterations
+    shared_ptr<T[]> sum(new T[m]);
+    shared_ptr<T[]> total_sum(new double[A.rows]);
+    cout << "\nJacobi Solution Sparse: " << endl;
+    for (int k = 0; k < 7; k++) //the number of iterations
     {
         for (int i = 0; i < m; i++)
         {
@@ -575,21 +578,26 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
             {
                 total_sum[i] += A.values[counter] * x_new_array[A.col_index[counter]];
             }
-            cout << "total_sum= " << total_sum[i];
+//            cout << "total_sum_sparse="<<total_sum[i] << endl;
             pow_sum += pow(total_sum[i] - b[i], 2);
         }
         //calculate the error
         double residual = sqrt(pow_sum);
-        cout << "residual" << k << " = " << residual << endl;
         if (residual < tolerance)
         {
             break;
         }
+        
         for (int i = 0; i < m; i++)
         {
             x[i] = x_new_array[i];//copy the new array to the original one after each iteration, which is different to Gauss_seidle method
-            cout << x[i] << endl;
         }
+    
+    }
+    for (int i = 0; i < m; i++)
+    {
+        cout << "x" << i << ": " << x[i] << endl;
+
     }
 }
 
