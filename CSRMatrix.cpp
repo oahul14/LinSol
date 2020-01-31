@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include "CSRMatrix.h"
 #include <cmath>
@@ -5,6 +6,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <memory>
+#include <vector>
 
 // Constructor - using an initialisation list here
 template <class T>
@@ -95,47 +97,7 @@ void CSRMatrix<T>::matVecMult(double *input, double *output)
    }
 }
 
-template<class T>
-void CSRMatrix<T>::printDense()
-{
-    cout << "Printing matrix: dense" << endl;
-    auto* values = new T[this->rows * this->cols];
-    for (int i = 0; i < this->rows; i++)
-    {
-        for (int j = 0; j < this->cols; j++)
-        {
-            values[i * this->rows + j] = 0;
-        }
-    }
 
-    auto* row_index = new int[this->nnzs];
-
-    int counter(0);
-    for (int j = 1; j < this->rows + 1; j++)
-    {
-        int num = this->row_position[j] - this->row_position[j - 1];
-        for (int i = counter; i < counter + num; i++)
-        {
-            row_index[i] = j - 1;
-        }
-        counter += num;
-    }
-
-    for (int i = 0; i < this->nnzs; i++)
-    {
-        values[row_index[i] * this->rows + this->col_index[i]] = this->values[i];
-    }
-    delete[] row_index;
-
-    for (int i = 0; i < this->rows; i++)
-    {
-        cout << endl;
-        for (int j = 0; j < this->cols; j++)
-        {
-            cout << setw(10) << values[i * this->rows + j];
-        }
-    }
-}
 
 // Do matrix matrix multiplication
 // output = this * mat_right
@@ -171,12 +133,59 @@ void CSRMatrix<T>::matMatMult(CSRMatrix<T>& mat_right, CSRMatrix<T>& output)
 }
 
 template<class T>
+void CSRMatrix<T>::fromDense(Matrix<T>& dense_in)
+{
+    int m = dense_in.rows;
+    int n = dense_in.cols;
+    this->rows = m;
+    this->cols = n;
+    this->row_position.reset(new int[m + 1]);
+
+    int counter = 0;
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            if (dense_in.values[i * n + j] != 0) counter++;
+        }
+        this->row_position[i + 1] = counter;
+    }
+    this->row_position[0] = 0;
+    this->nnzs = this->row_position[m];
+    
+    vector<T> temp_value;
+    vector<int> temp_col;
+
+    this->values.reset(new T[this->nnzs]);
+    this->col_index.reset(new int[this->nnzs]);
+
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            if (dense_in.values[i * n + j] != 0)
+            {
+                //cout << dense_in.values[i * n + j] << endl;
+                temp_value.push_back(dense_in.values[i * n + j]);
+                temp_col.push_back(j);
+            }
+        }
+    }
+    for (int i = 0; i < this->nnzs; i++)
+    {
+        //cout << temp_value[i] << endl;
+        this->values[i] = temp_value[i];
+        this->col_index[i] = temp_col[i];
+    }
+}
+
+template<class T>
 void CSRMatrix<T>::LU_decomposition(int* p_col)
 {
     for (int i = 0; i < this->rows; i++)
     {
-        //cout << "Loop over rows+1: i = " << i << endl;
-        //cout << "---------------" << endl;
+        cout << "Loop over rows+1: i = " << i << endl;
+        cout << "---------------" << endl;
         // get the non-zeros number for i-1th row
         int nnzs_current = this->row_position[i + 1] - this->row_position[i];
 
@@ -395,9 +404,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         int counter = 0;
         for (int k = this->row_position[i + 1]; k < this->nnzs; k++)
         {
+            //cout << "This->row_position[i + 1]: " << this->row_position[i+1] << endl;
             if (this->col_index[k] == i)
             {
-                //cout << "\n\nK loop: " << k << " check col at k: " << this->col_index[k] << " and its value: " << this->values[k] << endl;
+                cout << "\n\nK loop: " << k << " check col at k: " << this->col_index[k] << " and its value: " << this->values[k] << " with max nnzs: " << this->row_position[this->rows] << endl;
                 this->values[k] /= max_value;
                 // from now on the lower part will become L except for the diagonal 1s
                 // store the constant divisor
@@ -419,7 +429,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                 found_iright_start_index = k + 1;
                 nnzs_found_iright = found_next_start_index - found_iright_start_index;
                 nnzs_current_iright = nnzs_max_row;
-                //cout << "Found iright start index: " << found_iright_start_index << " with value: " << this->values[found_iright_start_index] << " and nnzs found iright: " << nnzs_found_iright << endl;
+                cout << "\nFound iright start index: " << found_iright_start_index << " with value: " << this->values[found_iright_start_index] << " and nnzs found iright: " << nnzs_found_iright << endl;
 
                 current_iright_start_index = current_start_index;
 
@@ -432,10 +442,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         nnzs_current_iright--;
                     }
                 }
-                //cout << "Current iright start index: " << current_iright_start_index << " with value: " << this->values[current_iright_start_index] << " and nnzs current iright: " << nnzs_current_iright << endl;
+                cout << "Current iright start index: " << current_iright_start_index << " with value: " << this->values[current_iright_start_index] << " and nnzs current iright: " << nnzs_current_iright << endl;
                 
                 //this->printMatrix();
-                //cout << endl;
+//                cout << endl;
                 // if the current row has 0 non-zeros, no change would be made
                 if (nnzs_current_iright > 0)
                 {
@@ -451,18 +461,12 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                             if (this->col_index[na] == this->col_index[nb]) nnzs_found_iright_new--;
                         }
                     }
-                    //cout << "Temp store length: " << nnzs_found_iright_new << endl;
+                    cout << "Temp store length: " << nnzs_found_iright_new << endl;
                     unique_ptr<double[]> temp_modified_value(new double[nnzs_found_iright_new]);
                     unique_ptr<int[]> temp_modified_col(new int[nnzs_found_iright_new]);
 
                     int num_add = nnzs_found_iright_new - nnzs_found_iright;
-                    //cout << "num_add: " << num_add << endl;
-                    if (num_add < 0)
-                    {
-                        cerr << "Invalid num_add." << endl;
-                        break;
-                    }
-                    //cout << "num_add: " << num_add << endl;
+                    cout << "num_add: " << num_add << endl;
 
                     vector<double> temp_value;
                     vector<int> temp_col;
@@ -491,7 +495,6 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         }
                     }
                     
-
                     for (int f = found_iright_start_index + nnzs_found_iright - 1; f >= found_iright_start_index; f--)
                     {
                         if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
@@ -505,24 +508,31 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                                     temp_value.push_back(this->values[f]);
                                     temp_col.push_back(this->col_index[f]);
                                 }
-                                else if ((this->col_index[f] > this->col_index[c-1]) && (this->col_index[f] < this->col_index[c])) 
+                                else if ((this->col_index[f] > this->col_index[c-1]) && (this->col_index[f] < this->col_index[c]))
                                 {
                                     temp_value.insert(temp_value.begin() + (c - current_iright_start_index ), this->values[f]);
                                     temp_col.insert(temp_col.begin() + (c - current_iright_start_index ), this->col_index[f]);
-                                    //cout << "Middle Temp value / col: " << this->values[f] << " / " << this->col_index[f] << endl;
+                                    cout << "Middle Temp value / col: " << this->values[f] << " / " << this->col_index[f] << endl;
                                 }
                             }
                         }
                     }
-
+                    
+                    
+                    if (num_add < 0)
+                    {
+                        cerr << "Invalid num_add." << endl;
+                        return;
+                    }
+                    
                     if (found_start_index + nnzs_found_iright)
                     
                     for (int ii = 0; ii < temp_value.size(); ii++)
                     {
-                        //cout << "Temp value / col: " << temp_value[ii] << " / " << temp_col[ii] << endl;
+                        cout << "Temp value / col: " << temp_value[ii] << " / " << temp_col[ii] << endl;
                     }
 
-                    // if num_add < 0: no nnzs change, only change in values for iright at found row
+                    // if num_add == 0: no nnzs change, only change in values for iright at found row
                     if (num_add == 0)
                     {
                         for (int neg = 0; neg < nnzs_found_iright; neg++)
@@ -541,7 +551,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         {
                             new_value[ni] = this->values[ni];
                             new_col[ni] = this->col_index[ni];
-                            //cout << "Begin Part: value / col: " << new_value[ni] << " / " << new_col[ni] << endl;
+                            cout << "Begin Part: value / col: " << new_value[ni] << " / " << new_col[ni] << endl;
                         }
 
                         // insert temp modified values and col from the start of the found iright non-zeros
@@ -549,7 +559,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         {
                             new_value[found_iright_start_index + temp_ni] = temp_value[temp_ni];
                             new_col[found_iright_start_index + temp_ni] = temp_col[temp_ni];
-                            //cout << "Add Part: value / col: " << temp_value[temp_ni] << " / " << temp_col[temp_ni] << endl;
+                            cout << "Add Part: value / col: " << temp_value[temp_ni] << " / " << temp_col[temp_ni] << endl;
                         }
 
                         // push back the rest of non-zeros
@@ -557,7 +567,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         {
                             new_value[ni + num_add] = this->values[ni];
                             new_col[ni + num_add] = this->col_index[ni];
-                            //cout << "Rest Part: value / col: " << new_value[ni+num_add] << " / " << new_col[ni+num_add] << endl;
+                            cout << "Rest Part: value / col: " << new_value[ni+num_add] << " / " << new_col[ni+num_add] << endl;
                         }
 
                         for (int irp = 0; irp < this->rows; irp++)
@@ -584,22 +594,29 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                     }
                 }
             
-                //this->printMatrix();
-                //cout << endl;
-                //counter++;
-                //if (counter == 5) break;
+                this->printMatrix();
+                cout << endl;
+                counter++;
+                if (counter == this->rows)
+                {
+                    cerr << "Unable to decompose, please try another matrix" << endl;
+                    return;
+                }
             }
         
         
         }
         //cout << endl;
-        //this->printMatrix();
+//        this->printMatrix();
         //cout << endl;
         //cout << endl;
         //this->printDense();
         //cout << endl << endl;
         if (i == this->rows - 2) break;
     }
+    //this->printDense();
+//    cout << endl;
+//    this->printMatrix();
     
 }
 
@@ -640,12 +657,12 @@ void CSRMatrix<T>::forward_substitution(T* b, T* output)
         //cout << endl;
     }
 
-    /*cout << "Printing forward sub vector output: " << endl;
-    for (int i = 0; i < this->rows; i++)
-    {
-        cout << " " << output[i];
-    }
-    cout << endl;*/
+//    cout << "Printing forward sub vector output: " << endl;
+//    for (int i = 0; i < this->rows; i++)
+//    {
+//        cout << " " << output[i];
+//    }
+//    cout << endl;
 }
 
 template<class T>
@@ -684,12 +701,12 @@ void CSRMatrix<T>::backward_substitution(T* b, T* output)
         //cout << endl;
     }
 
-    /*cout << "Printing backward sub vector output: " << endl;
-    for (int i = 0; i < this->rows; i++)
-    {
-        cout << " " << output[i];
-    }
-    cout << endl;*/
+//    cout << "Printing backward sub vector output: " << endl;
+//    for (int i = 0; i < this->rows; i++)
+//    {
+//        cout << " " << output[i];
+//    }
+//    cout << endl;
 }
 
 template<class T>
@@ -715,7 +732,7 @@ void CSRMatrix<T>::LU_solver(T* b, T* output)
 
     this->backward_substitution(y, output);
 
-    cout << "\nSolution: " << endl;
+    cout << "\nLU Solution Sparse: " << endl;
     for (int i = 0; i < this->rows; i++)
     {
         cout << "x" << i << ": " << output[i] << endl;
