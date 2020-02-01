@@ -190,7 +190,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         int nnzs_current = this->row_position[i + 1] - this->row_position[i];
 
         // for each diagonal entry:
-        // if possible, find the largest row index below
+        // find the largest row index below
         // so should loop over col_index, which is also the loop
         // for CSRMatrix values
         double max_value(0);
@@ -205,7 +205,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         {
             //cout << "loop over nnzs: k = " << k << endl;
             // find the MAX value index in values 
-            // for i - 1th col, and check if the col index if the same as rows'
+            // for i - 1th col, and check if the col index is the same as rows'
             if (this->col_index[k] == i)
             {
                 //cout << "--------: " << max_value << " at col:" << this->col_index[k] << endl;
@@ -219,9 +219,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
             }
         }
 
-        //cout << "max value index: " << max_value_index << ", ";
-        //cout << "Max value: " << max_value << endl;
-
+//        cout << "max value index: " << max_value_index << ", ";
+//        cout << "Max value: " << max_value << endl;
+        
+        // simulate row swapping for identity matrix
         for (int m = 0; m < this->rows; m++)
         {
             if ((max_value_index >= this->row_position[m]) && (max_value_index < this->row_position[m + 1]))
@@ -236,14 +237,12 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
             }
         }
 
-
-        //cout << "Getting nnzs for max value row: " << endl;
-
         // as the matrix is diagonal positive
         // so dont need to worry about 0s on the diagnal after partial pivoting
+        // find the start index of the row of where the max value was found and how many non-zeros in that row
         for (int j = 0; j < this->rows; j++)
         {
-            if ((max_value_index >= this->row_position[j]) & (max_value_index <= this->row_position[j + 1]))
+            if ((max_value_index >= this->row_position[j]) & (max_value_index < this->row_position[j + 1]))             ///changed: <= ------> <
             {
                 max_value_start_index = this->row_position[j];
                 //cout << this->row_position[j] << " - " << this->row_position[j+1] << endl;
@@ -267,9 +266,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         //cout << "This is how many non-zeros in between two rows: " << nnzs_in_between << endl;
         //cout << "And the in between start index is: " << in_between_start_index << endl;
         
-        //cout << "Below is the current row non-zeros: " << endl;
-        
-        // store current row non-zeros value/col
+        // temporarily store current row non-zeros value/col
         for (int in = 0; in < nnzs_current; in++)
         {
             temp_current_value[in] = this->values[current_start_index + in];
@@ -277,8 +274,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
             //cout << "Value: " << temp_current_value[in] << " Col: " << temp_current_col[in] << endl;
         }
 
-        //cout << "Below is the max value row non-zeros: " << endl;
-        // store max value row non-zeros value/col
+        // temporarily store max value row non-zeros value/col
         for (int in = 0; in < nnzs_max_row; in++)
         {
             //cout << "Start index for max value row: " << max_value_start_index << endl;
@@ -399,9 +395,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         int nnzs_current_iright = nnzs_max_row;
         int current_iright_start_index = current_start_index;
         int counter = 0;
+        // from the next row, search for rows that also have values at the same col
         for (int k = this->row_position[i + 1]; k < this->nnzs; k++)
         {
-            //cout << "This->row_position[i + 1]: " << this->row_position[i+1] << endl;
+//            cout << "This->row_position[i + 1]: " << this->row_position[i+1] << endl;
             if (this->col_index[k] == i)
             {
 //                cout << "\n\nK loop: " << k << " check col at k: " << this->col_index[k] << " and its value: " << this->values[k] << " with max nnzs: " << this->row_position[this->rows] << endl;
@@ -409,7 +406,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                 // from now on the lower part will become L except for the diagonal 1s
                 // store the constant divisor
                 s = this->values[k];
-                //cout << "s: " << s << " which is now at: " << k << "th position" << endl;
+//                cout << "s: " << s << " which is now at: " << k << "th position" << endl;
 
                 for (int irp = 0; irp < this->rows; irp++)
                 {
@@ -425,11 +422,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
 
                 found_iright_start_index = k + 1;
                 nnzs_found_iright = found_next_start_index - found_iright_start_index;
-                nnzs_current_iright = nnzs_max_row;
 //                cout << "\nFound iright start index: " << found_iright_start_index << " with value: " << this->values[found_iright_start_index] << " and nnzs found iright: " << nnzs_found_iright << endl;
 
                 current_iright_start_index = current_start_index;
-
+                nnzs_current_iright = nnzs_max_row;
                 for (int ivc = current_start_index; ivc < current_start_index + nnzs_max_row; ivc++)
                 {
 
@@ -446,7 +442,8 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                 // if the current row has 0 non-zeros, no change would be made
                 if (nnzs_current_iright > 0)
                 {
-                    // find what will be the nnzs of found row
+                    // find what will be the nnzs of found row after row manipulation
+                    // as when there is a value at current row, found row needs to add a non-zero
                     int nnzs_found_iright_new = nnzs_current_iright + nnzs_found_iright;
                     for (int na = current_iright_start_index; na < current_iright_start_index + nnzs_current_iright; na++)
                     {
@@ -458,13 +455,21 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
 //                    cout << "Temp store length: " << nnzs_found_iright_new << endl;
                     unique_ptr<double[]> temp_modified_value(new double[nnzs_found_iright_new]);
                     unique_ptr<int[]> temp_modified_col(new int[nnzs_found_iright_new]);
-
+                    
+                    // check if num_add is valid. Should be >= 0
                     int num_add = nnzs_found_iright_new - nnzs_found_iright;
 //                    cout << "num_add: " << num_add << endl;
-
+                    if (num_add < 0)
+                    {
+                        cerr << "Invalid num_add." << endl;
+                        return;
+                    }
+                    
                     vector<double> temp_value(0);
                     vector<int> temp_col(0);
+                    
 //                    cout << "vector sizes 1: " << temp_col.size() << "  " << temp_value.size() << endl;
+                    
                     for (int c = current_iright_start_index; c < current_iright_start_index + nnzs_current_iright; c++)
                     {
                         int col_c = this->col_index[c];
@@ -491,38 +496,10 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                     }
 //                    cout << "vector sizes 2: " << temp_col.size() << "  " << temp_value.size() << endl;
                     
-//                    for (int f = found_iright_start_index + nnzs_found_iright - 1; f >= found_iright_start_index; f--)
-//                    {
-//                        if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
-//                        {
-//                            //cout << this->values[f] << endl;
-//                            for (int c = current_iright_start_index; c < current_iright_start_index + nnzs_current_iright; c++)
-//                            {
-//                                //cout << this->col_index[c-1] << "-----" << this->col_index[c] << endl;
-//                                if (this->col_index[f] > this->col_index[c])
-//                                {
-//                                    if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
-//                                    {
-//                                        temp_value.push_back(this->values[f]);
-//                                        temp_col.push_back(this->col_index[f]);
-//                                    }
-//                                }
-//                                else if ((this->col_index[f] > this->col_index[c-1]) && (this->col_index[f] < this->col_index[c]))
-//                                {
-//                                    if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
-//                                    {
-//                                        temp_value.insert(temp_value.begin() + (c - current_iright_start_index ), this->values[f]);
-//                                        temp_col.insert(temp_col.begin() + (c - current_iright_start_index ), this->col_index[f]);
-//                                        cout << "Middle Temp value / col: " << this->values[f] << " / " << this->col_index[f] << endl;
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-                    
                     // get full record of found non-zeros at right of the row NO. i
-                    // first get the overlapped points and calculate it
-                    // then for
+                    // first get the overlapped points and calculate it (steps above)
+                    // then for found row non-zeros that doean't have non-zerso at current row
+                    // push them all and sort them according to their col_index
                     for (int f = found_iright_start_index; f < found_iright_start_index + nnzs_found_iright; f++)
                     {
                         if (!count(temp_col.begin(), temp_col.end(), this->col_index[f]))
@@ -531,45 +508,50 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                             temp_value.push_back(this->values[f]);
                         }
                     }
-//                    cout << "vector sizes 3: " << temp_col.size() << "  " << temp_value.size() << endl;
+                    
+                    //cout << "vector sizes 3: " << temp_col.size() << "  " << temp_value.size() << endl;
+                    
                     if (temp_col.size() != nnzs_found_iright_new)
                     {
                         cerr << "Invalid new length of found nnzs iright." << endl;
                         return;
                     }
                     
+                    //cout << "Temp value/col before sorting: " << endl;
+//                    for (int ii = 0; ii < temp_value.size(); ii++)
+//                    {
+//                        cout << "Temp value / col: " << temp_value[ii] << " / " << temp_col[ii] << endl;
+//                    }
+                    
                     unique_ptr<int> tempc(new int);
                     unique_ptr<T> tempv(new T);
                     for (int ik = 1; ik < nnzs_found_iright_new; ik++)
                     {
-                        for (int jk = 1; jk < nnzs_found_iright_new - ik; jk++)
+                        for (int jk = 0; jk < nnzs_found_iright_new - 1; jk++)
                         {
-                            if (temp_col[jk] > temp_col[jk + 1])
+                            if (temp_col[jk] > temp_col[ik])
                             {
-                                *tempc = temp_col[jk];
-                                *tempv = temp_value[jk];
-                                
-                                temp_col[jk] = temp_col[jk + 1];
-                                temp_value[jk] = temp_value[jk + 1];
-                                
-                                temp_col[jk + 1] = *tempc;
-                                temp_value[jk + 1] = *tempv;
+                                swap(temp_col[jk], temp_col[ik]);
+                                swap(temp_value[jk], temp_value[ik]);
                             }
                         }
                     }
-                    
-                    if (num_add < 0)
-                    {
-                        cerr << "Invalid num_add." << endl;
-                        return;
-                    }
-                    
-                    if (found_start_index + nnzs_found_iright)
                     
 //                    for (int ii = 0; ii < temp_value.size(); ii++)
 //                    {
 //                        cout << "Temp value / col: " << temp_value[ii] << " / " << temp_col[ii] << endl;
 //                    }
+                    
+                    for (int check = 0; check < nnzs_found_iright - 1; check++)
+                    {
+                        if (temp_col[check] > temp_col[check + 1])
+                        {
+                            cerr << "Sorting failed." << endl;
+                            return;
+                        }
+                    }
+                    
+
 
                     // if num_add == 0: no nnzs change, only change in values for iright at found row
                     if (num_add == 0)
@@ -577,7 +559,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         for (int neg = 0; neg < nnzs_found_iright; neg++)
                         {
                             this->values[found_iright_start_index + neg] = temp_value[neg];
-                            this->col_index[found_iright_start_index + neg] = temp_col[neg];
+                            this->col_index[found_iright_start_index + neg] = temp_col[neg];                            /// Changed
                         }
                     }
                     else
@@ -585,7 +567,7 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                         vector<double> new_value(this->nnzs + num_add);
                         vector<int> new_col(this->nnzs + num_add);
 
-                        // assign unchanged values/col numbers
+                        // assign unchanged values/col numbers before found iright
                         for (int ni = 0; ni < found_iright_start_index; ni++)
                         {
                             new_value[ni] = this->values[ni];
@@ -619,6 +601,8 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
                                 }
                             }
                         }
+                        
+                        if (new_value.size() != this->nnzs + num_add) cout << "New value size NOT compatible";
 
                         this->nnzs += num_add;
                         this->values.reset(new double[this->nnzs + num_add]);
@@ -645,17 +629,17 @@ void CSRMatrix<T>::LU_decomposition(int* p_col)
         
         
         }
-        //cout << endl;
+//        cout << endl;
 //        this->printMatrix();
-        //cout << endl;
+//        cout << endl;
         //cout << endl;
         //this->printDense();
         //cout << endl << endl;
         if (i == this->rows - 2) break;
     }
     //this->printDense();
-//    cout << endl;
-//    this->printMatrix();
+    cout << endl;
+    this->printMatrix();
     
 }
 

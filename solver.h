@@ -37,6 +37,9 @@ template<class T>
 void jacobi_dense(Matrix<T>& A, T* x, T* b, T maxit, T tolerance);
 
 template<class T>
+void jacobi_dense_blas(Matrix<T>& A, T* x, T* b, T maxit, T tolerance);
+
+template<class T>
 void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance);
 
 template<class T>

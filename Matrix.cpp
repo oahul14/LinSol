@@ -103,7 +103,7 @@ void Matrix<T>::genRanDense(bool dom)
     int cols = this->cols;
     shared_ptr<double[]> ran_mat(new double[rows * cols]); //cannot use unique_ptr since that the pointer will points to other directions
     srand((unsigned) time(NULL)); //generate different random values
-    if (dom) ran_mat[0] = rand() % 100+100;
+    if (dom) ran_mat[0] = rand() % (rows*cols) + 50; //set the diagonal values to ensure that it is larger than the sum of other values in each column
     else ran_mat[0] = rand() % 10+1;
     for (int i = 0; i < rows; i++)
     {
@@ -117,10 +117,10 @@ void Matrix<T>::genRanDense(bool dom)
             {
                 ran_mat[i * cols + j] = ran_mat[j * cols + i];
             }
-            else if (i=j) //the diagonal values
+            else if (i==j) //the diagonal values
             {
-                if (dom) ran_mat[0] = ran_mat[i * cols + j] = rand() % 100 + 100;
-                else ran_mat[0] = ran_mat[i * cols + j] = rand() % 10 + 1;
+                if (dom) ran_mat[i * cols + j] = rand() % (rows*cols) + 50; //set the diagonal values to ensure that it is larger than the sum of other values in each column
+                else ran_mat[i * cols + j] = rand() % 10 + 1;
             }
         }
     }
@@ -195,7 +195,7 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
 //        cout << endl;
     }
     
-    if (dom) ran_sparse[0] = rand() % 100 + 100;
+    if (dom) ran_sparse[0] = rand() % (rows*cols) + 50; //set the diagonal values to ensure that it is larger than the sum of other values in each column
     else ran_sparse[0] = rand() % 10 + 1;
     for (int i = 0; i < rows; i++)
     {
@@ -203,7 +203,7 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
         {
             if (i == j) //the diagonal values
             {
-                if (dom) ran_sparse[i * cols + j] = rand() % 100 + 50; //set the dominant matrix
+                if (dom) ran_sparse[i * cols + j] = rand() % (rows*cols) + 50; //set the diagonal values to ensure that it is larger than the sum of other values in each column
                 else ran_sparse[i * cols + j] = rand() % 10 + 1;
             }
         }

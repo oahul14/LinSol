@@ -448,6 +448,95 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
     }
 }
 
+template<class T>
+void jacobi_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
+//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
+{
+    //set the condition that matrix A must be a square matrix
+    if (A.rows != A.cols)
+    {
+        cerr << "Input matrix A must be a sqaure matrix!" << endl;
+    }
+    //have a guess of the size of output matrix, which has the same size of the rows size of matrix A
+    unique_ptr<T[]> x_new_array(new T[A.rows]);
+    
+    //initialize the x matrix and new x matrix as zero matrixs
+    for (int i = 0; i < A.rows; i++)
+    {
+        x[i] = 0;
+        x_new_array[i] = 0;
+        //cerr << x_new_array[i]<< endl;
+    }
+
+    unique_ptr<T[]> total_sum(new T[A.rows]);
+    for (int k = 0; k <maxit; k++) //record the number of iteration
+    {
+        for (int i = 0; i < A.rows; i++)
+        {
+            total_sum[i] = 0;
+        }
+        for (int i = 0; i < A.rows; i++)
+        {
+            //Define a multiple production by A[i,:i] and x[:i]
+            vector<T> mul_Ax(A.rows);
+            // Since that A[i,:i] and x[:i] are both 1d arrays,
+            //so the multiple production should be dot multiple production, which returns one value
+            //so we create a vector to store values
+            //auto* mul_Ax = new double[i];
+            if (i == 0) //when i =0; A[i,:i] and x[:i] are 0
+            {
+                mul_Ax[i] = 0;
+            }
+            else
+            {
+                for (int j = 0; j < i; j++)
+                {
+                    mul_Ax[i] += A.values[i * A.cols + j] * x[j];
+                }
+            }
+            //Define a multiple production by A[i,i+1:] and x[i+1:]
+            // Since that A[i,i+1:] and x[i+1:] are both 1d arrays,
+            //so the multiple production should be dot multiple production, which returns one value
+            //so we create a vector to store values
+            vector<T> mul2_Ax(A.cols);
+            if (i == A.rows - 1)//when i is the last index; A[i,i+1:] and x[i+1:] are 0
+            {
+                mul2_Ax[i] = 0;
+            }
+            else
+            {
+                for (int j = i + 1; j < A.cols; j++)
+                {
+                    mul2_Ax[i] += A.values[i * A.cols + j] * x[j];
+                }
+            }
+            x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i] - mul2_Ax[i]);
+        }
+        double pow_sum = 0;
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (int j = 0; j < A.cols; j++)
+            {
+                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
+
+            }
+            pow_sum += pow(total_sum[i] - b[i], 2);
+        }
+        //calculate the error
+        double residual = sqrt(pow_sum);
+//        cout << "residual" << k << " = " << residual << endl;
+        if (residual < tolerance)
+        {
+            break;
+        }
+        for (int i = 0; i < A.rows; i++)
+        {
+            x[i] = x_new_array[i];
+            cout << x[i] << endl;
+        }
+    }
+}
+
 
 template<class T>
 void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
