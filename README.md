@@ -1,9 +1,4 @@
-# *Added dense / sparse Cholesky and Thomas methods in solver.h, solver.cpp and main.cpp files.
-# *Added dense Gauss-Seidel solver in solver.h, solver.cpp and main.cpp files.
-# *Added Gauss-Elimination in solver.h, solver.cpp and main.cpp files.
-
 # acse-5-assignment-nan
-
 
 ### Current schedule
 
