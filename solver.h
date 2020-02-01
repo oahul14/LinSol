@@ -6,14 +6,8 @@
 #include "Matrix.cpp"
 #include "CSRMatrix.h"
 #include "CSRMatrix.cpp"
-//#include <Accelerate/Accelerate.h>
 
 using namespace std;
-template<class T>
-void swap_rows(Matrix<T>& A, int& j, int& k);
-
-template<class T>
-int argmax(int& k, Matrix<T>& A);
 
 template<class T>
 void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_);

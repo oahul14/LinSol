@@ -1,37 +1,7 @@
 #pragma once
 #include "solver.h"
 #include <memory>
-
-
-template<class T>
-void swap_rows(Matrix<T>& A, int& j, int& k)
-{
-	const int N = A.cols;
-	for (int i = 0; i < A.cols; i++)
-	{
-		T* num = new T;
-		*num = A.values[k * A.rows + i];
-		A.values[k * A.rows + i] = A.values[j * A.rows + i];
-		A.values[j * A.rows + i] = *num;
-		delete num;
-	}
-}
-
-// find the index of the largest value
-// and return it as the index of row
-template<class T>
-int argmax(int& k, Matrix<T>& A)
-{
-	int index = k * A.cols + k;
-	for (int i = k; i < A.cols; i++)
-	{
-		if (abs(A.values[i * A.cols + k]) > abs(A.values[index]))
-		{
-			index = i * A.cols + k;
-		}
-	}
-	return index/A.cols;
-}
+//#include <Accelerate/Accelerate.h>
 
 template<class T>
 void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
@@ -59,10 +29,40 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 	{
 //		cout << "\nLoop over rows+1: i = " << k << endl;
 //		cout << "---------------" << endl;
-		int j = argmax(k, A);
-		swap_rows(A, j, k);
-		swap_rows(P_, j, k);
-		swap_rows(L, j, k);
+        // partial pivotisation
+        // find max value in the current col
+		int index = k * A.cols + k;
+        for (int i = k; i < A.cols; i++)
+        {
+            if (abs(A.values[i * A.cols + k]) > abs(A.values[index]))
+            {
+                index = i * A.cols + k;
+            }
+        }
+        int j = index / A.cols;
+        
+        // swap the rows
+        for (int i = 0; i < A.cols; i++)
+        {
+            T* numA = new T;
+            *numA = A.values[k * A.rows + i];
+            A.values[k * A.rows + i] = A.values[j * A.rows + i];
+            A.values[j * A.rows + i] = *numA;
+            
+            T* numP_ = new T;
+            *numP_ = P_.values[k * P_.rows + i];
+            P_.values[k * P_.rows + i] = P_.values[j * P_.rows + i];
+            P_.values[j * P_.rows + i] = *numP_;
+            
+            T* numL = new T;
+            *numL = L.values[k * L.rows + i];
+            L.values[k * L.rows + i] = L.values[j * L.rows + i];
+            L.values[j * L.rows + i] = *numL;
+            
+            delete numA;
+            delete numP_;
+            delete numL;
+        }
 //		A.printMatrix();
 //		L.printMatrix();
 		for (int i = k + 1; i < m; i++)
@@ -150,14 +150,10 @@ void LU_dense(Matrix<T>& A, T* b, T* x)
 	auto* L = new Matrix<T>(m, m, true);
 	auto* P = new Matrix<T>(m, m, true);
 	LU_decomposition_pp(A, *L, *P);
-	// print out P, L, U
-	//L->printMatrix();
 	
 	// A is now the upper triangle
-	//A.printMatrix();
 	// get the inverse i.e. the transpose of P
 	P->transpose(*P);
-	//P->printMatrix();
 
 	auto* pinvb = new double[m * 1];
 	P->matVecMult(b, pinvb);
@@ -381,47 +377,31 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
     }
 
     unique_ptr<T[]> total_sum(new T[A.rows]);
+    unique_ptr<double[]> mul_Ax(new double[A.rows]);
     for (int k = 0; k <maxit; k++) //record the number of iteration
     {
+        
         for (int i = 0; i < A.rows; i++)
         {
             total_sum[i] = 0;
+            mul_Ax[i] = 0;
         }
+        
         for (int i = 0; i < A.rows; i++)
         {
-            //Define a multiple production by A[i,:i] and x[:i]
-            vector<T> mul_Ax(A.rows); // Since that A[i,:i] and x[:i] are both 1d arrays,
-            //so the multiple production should be dot multiple production, which returns one value
-            //so we create a vector to store values
-            //auto* mul_Ax = new double[i];
-            if (i == 0) //when i =0; A[i,:i] and x[:i] are 0
+            for (int j = 0; j < A.cols; j++)
             {
-                mul_Ax[i] = 0;
-            }
-            else
-            {
-                for (int j = 0; j < i; j++)
+                if (i != j)
                 {
                     mul_Ax[i] += A.values[i * A.cols + j] * x[j];
                 }
+
+//                cout << "b[i] = " << b[i] << endl;
+//                cout << "mul = " << mul_Ax[i] << endl;
+//                cout << "A[ii] = " << A.values[i * A.cols + i] << endl;
+                x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i]);
+
             }
-            //Define a multiple production by A[i,i+1:] and x[i+1:]
-            // Since that A[i,i+1:] and x[i+1:] are both 1d arrays,
-            //so the multiple production should be dot multiple production, which returns one value
-            //so we create a vector to store values
-            vector<T> mul2_Ax(A.cols);
-            if (i == A.rows - 1)//when i is the last index; A[i,i+1:] and x[i+1:] are 0
-            {
-                mul2_Ax[i] = 0;
-            }
-            else
-            {
-                for (int j = i + 1; j < A.cols; j++)
-                {
-                    mul2_Ax[i] += A.values[i * A.cols + j] * x[j];
-                }
-            }
-            x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i] - mul2_Ax[i]);
         }
         double pow_sum = 0;
         for (int i = 0; i < A.rows; i++)
@@ -435,7 +415,6 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
         }
         //calculate the error
         double residual = sqrt(pow_sum);
-//        cout << "residual" << k << " = " << residual << endl;
         if (residual < tolerance)
         {
             break;
@@ -443,8 +422,12 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
         for (int i = 0; i < A.rows; i++)
         {
             x[i] = x_new_array[i];
-            cout << x[i] << endl;
         }
+    }
+    cout << "\nJacobi Solution Dense:" << endl;
+    for (int i = 0; i < A.rows; i++)
+    {
+        cout << "x" << i << ": " << x[i] << endl;
     }
 }
 
@@ -452,89 +435,74 @@ template<class T>
 void jacobi_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
 //user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
 {
-    //set the condition that matrix A must be a square matrix
-    if (A.rows != A.cols)
-    {
-        cerr << "Input matrix A must be a sqaure matrix!" << endl;
-    }
-    //have a guess of the size of output matrix, which has the same size of the rows size of matrix A
-    unique_ptr<T[]> x_new_array(new T[A.rows]);
-    
-    //initialize the x matrix and new x matrix as zero matrixs
-    for (int i = 0; i < A.rows; i++)
-    {
-        x[i] = 0;
-        x_new_array[i] = 0;
-        //cerr << x_new_array[i]<< endl;
-    }
-
-    unique_ptr<T[]> total_sum(new T[A.rows]);
-    for (int k = 0; k <maxit; k++) //record the number of iteration
-    {
-        for (int i = 0; i < A.rows; i++)
-        {
-            total_sum[i] = 0;
-        }
-        for (int i = 0; i < A.rows; i++)
-        {
-            //Define a multiple production by A[i,:i] and x[:i]
-            vector<T> mul_Ax(A.rows);
-            // Since that A[i,:i] and x[:i] are both 1d arrays,
-            //so the multiple production should be dot multiple production, which returns one value
-            //so we create a vector to store values
-            //auto* mul_Ax = new double[i];
-            if (i == 0) //when i =0; A[i,:i] and x[:i] are 0
-            {
-                mul_Ax[i] = 0;
-            }
-            else
-            {
-                for (int j = 0; j < i; j++)
-                {
-                    mul_Ax[i] += A.values[i * A.cols + j] * x[j];
-                }
-            }
-            //Define a multiple production by A[i,i+1:] and x[i+1:]
-            // Since that A[i,i+1:] and x[i+1:] are both 1d arrays,
-            //so the multiple production should be dot multiple production, which returns one value
-            //so we create a vector to store values
-            vector<T> mul2_Ax(A.cols);
-            if (i == A.rows - 1)//when i is the last index; A[i,i+1:] and x[i+1:] are 0
-            {
-                mul2_Ax[i] = 0;
-            }
-            else
-            {
-                for (int j = i + 1; j < A.cols; j++)
-                {
-                    mul2_Ax[i] += A.values[i * A.cols + j] * x[j];
-                }
-            }
-            x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i] - mul2_Ax[i]);
-        }
-        double pow_sum = 0;
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (int j = 0; j < A.cols; j++)
-            {
-                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
-
-            }
-            pow_sum += pow(total_sum[i] - b[i], 2);
-        }
-        //calculate the error
-        double residual = sqrt(pow_sum);
-//        cout << "residual" << k << " = " << residual << endl;
-        if (residual < tolerance)
-        {
-            break;
-        }
-        for (int i = 0; i < A.rows; i++)
-        {
-            x[i] = x_new_array[i];
-            cout << x[i] << endl;
-        }
-    }
+//    cout << "Jacobi Solution Dense:" << endl;
+//    //set the condition that matrix A must be a square matrix
+//    if (A.rows != A.cols)
+//    {
+//        cerr << "Input matrix A must be a sqaure matrix!" << endl;
+//    }
+//    //have a guess of the size of output matrix, which has the same size of the rows size of matrix A
+//    unique_ptr<T[]> x_new_array(new T[A.rows]);
+//
+//    //initialize the x matrix and new x matrix as zero matrixs
+//    for (int i = 0; i < A.rows; i++)
+//    {
+//        x[i] = 0;
+//        x_new_array[i] = 0;
+//        //cerr << x_new_array[i]<< endl;
+//    }
+//
+//    unique_ptr<T[]> total_sum(new T[A.rows]);
+//    unique_ptr<double[]> mul_Ax(new double[A.rows]);
+//    for (int k = 0; k <maxit; k++) //record the number of iteration
+//    {
+//
+//        for (int i = 0; i < A.rows; i++)
+//        {
+//            total_sum[i] = 0;
+//            mul_Ax[i] = 0;
+//        }
+//
+//
+//        for (int i = 0; i < A.rows; i++)
+//        {
+//            auto* Avec = new T[A.cols];
+//            for (int j = 0; j < A.cols; j++)
+//            {
+//                Avec[j] = A.values[i * A.cols + j];
+//            }
+//            mul_Ax[i] += cblas_ddot(A.rows, Avec, 1, x, 1);
+//            mul_Ax[i] -= A.values[i * A.cols + i] * x[i];
+//            x_new_array[i] = (1. / A.values
+//                              [i * A.cols + i]) * (b[i] - mul_Ax[i]);
+//            delete[] Avec;
+//        }
+//        double pow_sum = 0;
+//        for (int i = 0; i < A.rows; i++)
+//        {
+//            for (int j = 0; j < A.cols; j++)
+//            {
+//                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
+//
+//            }
+//            pow_sum += pow(total_sum[i] - b[i], 2);
+//        }
+//        //calculate the error
+//        double residual = sqrt(pow_sum);
+//        if (residual < tolerance)
+//        {
+//            break;
+//        }
+//        for (int i = 0; i < A.rows; i++)
+//        {
+//            x[i] = x_new_array[i];
+//        }
+//    }
+//    cout << "\nJacobi Solution Dense BLAS: " << endl;
+//    for (int i = 0; i < A.rows; i++)
+//    {
+//        cout << "x" << i << ": " << x[i] << endl;
+//    }
 }
 
 
@@ -605,7 +573,7 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
         }
     }
     
-    cout << "Gauss-Seidel Solution Sparse: " << endl;
+    cout << "\nGauss-Seidel Solution Sparse: " << endl;
     for (int i = 0; i < m; i++)
     {
         cout << "x" << i << ": " << x[i] << endl;
@@ -633,7 +601,6 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
 
     shared_ptr<T[]> sum(new T[m]);
     shared_ptr<T[]> total_sum(new double[A.rows]);
-    cout << "\nJacobi Solution Sparse: " << endl;
     for (int k = 0; k < 7; k++) //the number of iterations
     {
         for (int i = 0; i < m; i++)
@@ -683,6 +650,7 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
         }
     
     }
+    cout << "\nJacobi Solution Sparse: " << endl;
     for (int i = 0; i < m; i++)
     {
         cout << "x" << i << ": " << x[i] << endl;
