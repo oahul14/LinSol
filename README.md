@@ -17,7 +17,7 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 ```gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas main.cpp```
 * Note that feel free to use any compiler as long as it supports standard c++17;
 * If using Windows please have ```OpenBLAS``` installed first, or other open libraries that include ```<cblas.h>```.
-## Alternative Choice
+### Alternative Choice
 * For macOS the ```<Accelerate/Accelerate.h>``` is pre-built as part of the framework. 
 * To use it please comment out ```<cblas.h>``` in for files included it;
 * And then run like below:
