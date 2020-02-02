@@ -32,6 +32,18 @@ template<class T>
 void gauss_elimination(Matrix<T>& A, T* x, T* b);
 
 template<class T>
+void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance);
+//input matrix must be a dense matrix,two array pointers, the upper limit iteration times and one iteration tolerance
+//the algorithm firstly seperate the diagonal values of A matrix from the summation, and then use other components to express each item in x array
+//there is still one unknown x component on the RHS of the function, so iteration is implemented
+//create one new array to store the previous solution to prevent overwriting the previous one, and put this new array as the entry of x in the next iteration
+
+template<class T>
+void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance);
+//input matrix must be a sparse matrix,two array pointers, the upper limit iteration times and one iteration tolerance
+// the algorithm is the same as jacobi_dense
+
+template<class T>
 void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, double er, double urf, int tiles);
 /*
 // input
@@ -54,18 +66,6 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
 //Gauss Seidel solution is one improved method of Jacobi iteration method
 //instead of using the values gained form the previous step (Jacobi method), Gauss Seidel updates the latest solution during iteration
 //so it does not need a new array to store the previous solution
-
-template<class T>
-void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance);
-//input matrix must be a dense matrix,two array pointers, the upper limit iteration times and one iteration tolerance
-//the algorithm firstly seperate the diagonal values of A matrix from the summation, and then use other components to express each item in x array
-//there is still one unknown x component on the RHS of the function, so iteration is implemented
-//create one new array to store the previous solution to prevent overwriting the previous one, and put this new array as the entry of x in the next iteration
-
-template<class T>
-void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance);
-//input matrix must be a sparse matrix,two array pointers, the upper limit iteration times and one iteration tolerance
-// the algorithm is the same as jacobi_dense
 
 template<class T>
 void thomas(Matrix<T>& A, T* x, T* b);
