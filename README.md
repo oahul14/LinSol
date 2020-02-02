@@ -71,11 +71,11 @@ Heath M.T., “Scientific computing: An introductory survey”, 2nd Internationa
 
 # Contributions
 * Sokratis Anagnostopoulos:
-	* Cholesky dense/sparse; 
-	* Gauss-Seidel dense;
-	* Thomas methods; 
-	* Container tests and debugging;
-	* Report.
+	* Implement Cholesky dense/sparse; 
+	* Implement Gauss-Seidel dense;
+	* Implement Thomas methods; 
+	* Design container tests and debugging;
+	* Finish the report.
 * Hao Lu: 
 	* Implement LU decomposition for dense and sparse matrices; 
 	* Writing the main function UI and packaging tests in testing.cpp/.h; 
