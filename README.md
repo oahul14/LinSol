@@ -16,6 +16,6 @@
 ```
 * Then in the command line compile using: 
 ```
-	gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas try_blas.cpp 
+	gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas main.cpp 
 ```
 * If using Windows please have OpenBLAS installed first, or other open libraries that include cblas.h
