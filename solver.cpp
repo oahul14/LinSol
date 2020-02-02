@@ -556,8 +556,7 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
             auto* t = new double;
             *t = A.values[k * m + i] / A.values[i * m + i];
             for (j = 0; j < m; j++) {
-
-                //make the elements below the pivot elements equal to zero or eliminate the variables
+                // set the coeff. equal to pivot elements or eliminate the variables
                 A.values[k * m + j] = A.values[k * m + j] - *t * A.values[i * m + j];
             }
             *(b + k) = b[k] - *t * b[i];
