@@ -16,15 +16,16 @@ public:
 
     // Print out the values in our matrix
     virtual void printMatrix();
+    // Print out the matrix in a dense manner
     void printDense();
 
     // Perform some operations with our matrix
     void matVecMult(double *input, double *output);
-    // Perform some operations with our matrix
-    void matMatMult(CSRMatrix<T>& mat_right, CSRMatrix<T>& output);
+    // assign value of a initialised CSRMatrix using the input Matrix's values
     void fromDense(Matrix<T>& dense_in);
-    
+    // forward_substitution for CSRMatrix
     void forward_substitution(T* b, T* output);
+    // backward_substitution for CSRMatrix
     void backward_substitution(T* b, T* output);
 
     // Explicitly using the C++11 nullptr here
@@ -34,8 +35,5 @@ public:
     // How many non-zero entries we have in the matrix
     int nnzs=-1;
 
-// Private variables - there is no need for other classes 
-// to know about these variables
 private:
-   
 };

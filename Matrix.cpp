@@ -142,9 +142,7 @@ void Matrix<T>::genRanDense(bool dom)
         for (int j = 0; j < rows; j++)
         {
             this->values[i * cols + j] = ran_mat[i * cols + j];
-//            cout << this->values[i * cols + j] << "  ";
         }
-//        cout << endl;
     }
 }
 
@@ -203,9 +201,7 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
         for (int j = 0; j < rows; j++)
         {
             ran_sparse[i * cols + j] = ran_mat[i * cols + j] + ran_mat_T[i * cols + j];
-//            cout << setw(4) << ran_sparse[i * cols + j] << " ";
         }
-//        cout << endl;
     }
     
     if (dom) ran_sparse[0] = rand() % (rows*cols) + 50; //set the diagonal values to ensure that it is larger than the sum of other values in each column

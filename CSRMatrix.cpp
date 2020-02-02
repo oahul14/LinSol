@@ -36,9 +36,9 @@ CSRMatrix<T>::CSRMatrix(int rows, int cols, int nnzs, T *values_ptr, int *row_po
 }
 
 // destructor
+// unique pointers used so they will take care of the memory
 template <class T>
-CSRMatrix<T>::~CSRMatrix()
-{}
+CSRMatrix<T>::~CSRMatrix() {}
 
 // Explicitly print out the values in values array as if they are a matrix
 template <class T>
@@ -97,39 +97,6 @@ void CSRMatrix<T>::matVecMult(double *input, double *output)
    }
 }
 
-// Do matrix matrix multiplication
-// output = this * mat_right
-template <class T>
-void CSRMatrix<T>::matMatMult(CSRMatrix<T>& mat_right, CSRMatrix<T>& output)
-{
-
-   // Check our dimensions match
-   if (this->cols != mat_right.rows)
-   {
-      std::cerr << "Input dimensions for matrices don't match" << std::endl;
-      return;
-   }
-
-   // Check if our output matrix has had space allocated to it
-   if (output.values != nullptr) 
-   {
-      // Check our dimensions match
-      if (this->rows != output.rows || this->cols != output.cols)
-      {
-         std::cerr << "Input dimensions for matrices don't match" << std::endl;
-         return;
-      }      
-   }
-   // The output hasn't been preallocated, so we are going to do that
-   else
-   {
-      std::cerr << "OUTPUT HASN'T BEEN ALLOCATED" << std::endl;
-
-   }
-
-   // HOW DO WE SET THE SPARSITY OF OUR OUTPUT MATRIX HERE??
-}
-
 template<class T>
 void CSRMatrix<T>::fromDense(Matrix<T>& dense_in)
 {
@@ -138,7 +105,8 @@ void CSRMatrix<T>::fromDense(Matrix<T>& dense_in)
     this->rows = m;
     this->cols = n;
     this->row_position.reset(new int[m + 1]);
-
+    
+    // calculating the row position for given values
     int counter = 0;
     for (int i = 0; i < m; i++)
     {
@@ -148,30 +116,31 @@ void CSRMatrix<T>::fromDense(Matrix<T>& dense_in)
         }
         this->row_position[i + 1] = counter;
     }
+    // reset rowposition[0] which is out of range for length dense_in.rows
     this->row_position[0] = 0;
+    // resize the nnzs
     this->nnzs = this->row_position[m];
     
     vector<T> temp_value;
     vector<int> temp_col;
-
+    
     this->values.reset(new T[this->nnzs]);
     this->col_index.reset(new int[this->nnzs]);
 
+    // store values of input dense matrix temporarily
     for (int i = 0; i < m; i++)
     {
         for (int j = 0; j < n; j++)
         {
             if (dense_in.values[i * n + j] != 0)
-            {
-                //cout << dense_in.values[i * n + j] << endl;
-                temp_value.push_back(dense_in.values[i * n + j]);
+            { temp_value.push_back(dense_in.values[i * n + j]);
                 temp_col.push_back(j);
             }
         }
     }
+    // assign stored cols and values to current CSRMatrix
     for (int i = 0; i < this->nnzs; i++)
     {
-        //cout << temp_value[i] << endl;
         this->values[i] = temp_value[i];
         this->col_index[i] = temp_col[i];
     }

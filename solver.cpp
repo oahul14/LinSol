@@ -1,11 +1,13 @@
 #pragma once
 #include "solver.h"
 #include <memory>
-#include <Accelerate/Accelerate.h>
+#include <cblas.h>
+#include <chrono>
 
 template<class T>
-void LU_dense(Matrix<T>& A, T* x, T* b)
+void LU_dense(Matrix<T>& __restrict A, T* __restrict x, T* __restrict b)
 {
+    // check if a square matrix
     if (A.rows != A.cols)
     {
         cerr << "Cannot decompose non-square matrix into LU. \n";
@@ -20,7 +22,6 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
 	{
 		L->values[i] = 0;
 	}
-
 	// create eye matrix P_
 	for (int i = 0; i < m; i++)
 	{
@@ -30,7 +31,8 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
 			else P_->values[i * m + j] = 0;
 		}
 	}
-
+    // LU decomposition
+    // The algorithm is from ACSE-3 Lecture linear solvers: LU_decomposition_pp
 	for (int k = 0; k < m - 1; k++)
 	{
         // partial pivotisation
@@ -45,7 +47,10 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
         }
         int j = index / A.cols;
         
-        // swap the rows
+        // swap the rows for all three matrices
+        // this can be further simplified but requires corresponding changes
+        // of backward & forward substitution, which will cause inconsistency
+        // for cholesky methods
         for (int i = 0; i < A.cols; i++)
         {
             T* numA = new T;
@@ -67,9 +72,15 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
             delete numP_;
             delete numL;
         }
+        // loop over resting rows to conduct vector daxpy
+        // find the constant divisor for the row: s
+        // then each row below y := -s * x + y
+        // where x is the current row
+        // and y is rows below the current row
 		for (int i = k + 1; i < m; i++)
 		{
 			const double s = A.values[i * m + k] / A.values[k * m + k];
+            // store the s in lower matrix
 			L->values[i * m + k] = s;
 			for (int j = k; j < m; j++)
 			{
@@ -77,7 +88,7 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
 			}
 		}
 	}
-
+    
 	// add diagnal eye into L
 	for (int i = 0; i < m; i++)
 	{
@@ -87,10 +98,15 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
 		}
 	}
     
+    // now A becomes upper triangle, L the lower triangle and P_ the swapping reference matrix
+    // now to solve L(Ux) = P^-1 @ b
     auto* pinvb = new double[m * 1];
+    // get pinvb = P^-1 @ b
     P_->matVecMult(b, pinvb);
     auto* y = new double[m * 1];
+    // forward substitution to get Ly = pinvb
     L->forward_sub(y, pinvb);
+    // backward substitution to get Ux = y
     A.backward_sub(x, y);
 
     delete L;
@@ -100,120 +116,7 @@ void LU_dense(Matrix<T>& A, T* x, T* b)
 }
 
 template<class T>
-void LU_dense_blas(Matrix<T>& A, T* x, T* b)
-{
-    if (A.rows != A.cols)
-    {
-        cerr << "Cannot decompose non-square matrix into LU. \n";
-        return;
-    }
-
-    const int m = A.cols;
-    auto* L = new Matrix<T>(m, m, true);
-    auto* P_ = new Matrix<T>(m, m, true);
-    // create an empty matrix L
-    for (int i = 0; i < m * m; i++)
-    {
-        L->values[i] = 0;
-    }
-
-    // create eye matrix P_
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < m; j++)
-        {
-            if (i == j) { P_->values[i * m + j] = 1; }
-            else P_->values[i * m + j] = 0;
-        }
-    }
-
-    for (int k = 0; k < m - 1; k++)
-    {
-        // partial pivotisation
-        // find max value in the current col
-        int index = k * A.cols + k;
-        for (int i = k; i < A.cols; i++)
-        {
-            if (abs(A.values[i * A.cols + k]) > abs(A.values[index]))
-            {
-                index = i * A.cols + k;
-            }
-        }
-        int j = index / A.cols;
-        
-        // swap the rows
-        for (int i = 0; i < A.cols; i++)
-        {
-            T* numA = new T;
-            *numA = A.values[k * A.rows + i];
-            A.values[k * A.rows + i] = A.values[j * A.rows + i];
-            A.values[j * A.rows + i] = *numA;
-            
-            T* numP_ = new T;
-            *numP_ = P_->values[k * P_->rows + i];
-            P_->values[k * P_->rows + i] = P_->values[j * P_->rows + i];
-            P_->values[j * P_->rows + i] = *numP_;
-            
-            T* numL = new T;
-            *numL = L->values[k * L->rows + i];
-            L->values[k * L->rows + i] = L->values[j * L->rows + i];
-            L->values[j * L->rows + i] = *numL;
-            
-            delete numA;
-            delete numP_;
-            delete numL;
-        }
-        
-        T* Avec_current = new T[m - k];
-        for (int j = k; j < m; j++)
-        {
-            Avec_current[j] = A.values[k * m + j];
-        }
-        
-        for (int i = k + 1; i < m; i++)
-        {
-            const double s = A.values[i * m + k] / A.values[k * m + k];
-            L->values[i * m + k] = s;
-            
-            T* Avec_found = new T[m - k];
-            for (int j = k; j < m; j++)
-            {
-                Avec_found[j] = A.values[i * m + j];
-            }
-            cblas_daxpy(m - k, s, Avec_current, 1, Avec_found, 1);
-            for (int j = k; j < m; j++)
-            {
-                A.values[i * m + j] = Avec_found[j];
-            }
-            cout << "-----" << endl;
-            delete[] Avec_found;
-        }
-        delete[] Avec_current;
-    }
-
-    // add diagnal eye into L
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < m; j++)
-        {
-            if (i == j) { L->values[i * m + j] = 1; }
-        }
-    }
-    
-    auto* pinvb = new double[m * 1];
-    P_->matVecMult(b, pinvb);
-    auto* y = new double[m * 1];
-    L->forward_sub(y, pinvb);
-    A.backward_sub(x, y);
-
-    delete L;
-    delete P_;
-    delete[] pinvb;
-    delete[] y;
-}
-
-template<class T>
-void LU_sparse(CSRMatrix<T>& A, T* x, T* b)
+void LU_sparse(CSRMatrix<T>& __restrict A, T* __restrict x, T* __restrict b)
 {
     // create a identity matrix
     auto* p_col = new int[A.rows * 1];
@@ -221,6 +124,7 @@ void LU_sparse(CSRMatrix<T>& A, T* x, T* b)
     {
         p_col[c] = c;
     }
+    // same algorithm as LU_dense from ACSE-3 Lecture 3 Linear solvers
     for (int i = 0; i < A.rows; i++)
     {
         int nnzs_current = A.row_position[i + 1] - A.row_position[i];
@@ -596,7 +500,7 @@ void LU_sparse(CSRMatrix<T>& A, T* x, T* b)
         patb[i] = b[p_col[i]];
     }
     auto* y = new double[A.rows * 1];
-    // solve L(Ux) = P^-1 @
+    // solve L(Ux) = P^-1 @ b
     A.forward_substitution(patb, y);
     A.backward_substitution(y, x);
 
@@ -608,27 +512,37 @@ void LU_sparse(CSRMatrix<T>& A, T* x, T* b)
 template<class T>
 void gauss_elimination(Matrix<T>& A, T* x, T* b)
 {
+    // solves systems of linear eqs., with the Gaussian elimination method
+    
     if (A.rows != A.cols)
     {
+        // Assert that the no of eqs is equal to the no of uknowns
         cerr << "Cannot apply Gaussian Elimination on non-square matrix. \n";
         return;
     }
 
+    // Loop constant initialization
     const int m = A.cols;
     int i, j, k;
-
-    for (i = 0; i < m; i++) {                   //Pivotisation
+    
+    // Pivotisation / preconditioning
+    // swap rows with ascending diagonal elements
+    // from top to bottom of the matrix
+    for (i = 0; i < m; i++) {
         for (k = i + 1; k < m; k++) {
             if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
                 for (j = 0; j < m; j++) {
                     auto* temp = new double;
-                    *temp = A.values[i * m + j];
+                    *temp = A.values[i * m + j];  // set temporary value before swaping
+                    // Swap all row values given that the diagonal of
+                    // row k is larger than the diagonal of row i
                     A.values[i * m + j] = A.values[k * m + j];
                     A.values[k * m + j] = *temp;
                     delete temp;
                 }
                 auto* temp2 = new double;
                 *temp2 = b[i];
+                // Similar for b
                 *(b + i) = b[k];
                 *(b + k) = *temp2;
                 delete temp2;
@@ -651,47 +565,35 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
         }
     }
 
-    //back-substitution
+    // Back-substitution
     for (i = m - 1; i >= 0; i--) {
-
-        // make the variable to be calculated equal to the rhs of the last equation
+        // Initialize x with the rhs of the last eq.
         *(x + i) = b[i];
         for (j = i + 1; j < m; j++) {
-
-            // subtract all the lhs values except the coefficient of the variable whose value is being calculated
+            // Subtracting all the lhs coefficient * x product from the x which is being calculated
             if (j != i) {
                 *(x + i) = x[i] - A.values[i * m + j] * x[j];
             }
         }
-        //now finally divide the rhs by the coefficient of the variable to be calculated
+        // Division of rhs by the coef of the x to be calculated
         *(x + i) = x[i] / A.values[i * m + i];
     }
 }
 
 template<class T>
-void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, T er, T urf)
+void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, double er, double urf, int tiles)
 {
     // solves systems of linear eqs., with the Gauss-Seidel method
 
-    /*
-    // input
-    n = number of eqs.
-    a  = matrix of coefficients
-    b  = matrix of constants
-    x  = initial values for the unknown (nq values)
-    er = termination criterion
-    urf = relaxation factor
-    // output
-    x = solution
-    rmx = maximum residual (verification)
-    */
 
     if (A.rows != A.cols)
     {
+        // Assert that the no of eqs is equal to the no of uknowns
         cerr << "Cannot apply Gauss-Seidel on non-square matrix. \n";
         return;
     }
 
+    // Initialization of looping constants
     const int n = A.cols;
     const int m = A.cols;
     int i, j, k, niter;
@@ -703,19 +605,24 @@ void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, T er, T urf)
         *(x + i) = 0.0;
     }
 
-    //Pivotisation
+    // Pivotisation
+    // swap rows with ascending diagonal elements
+    // from top to bottom of the matrix
     for (i = 0; i < m; i++) {
         for (k = i + 1; k < m; k++) {
             if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
                 for (j = 0; j < m; j++) {
                     auto* temp = new double;
-                    *temp = A.values[i * m + j];
+                    *temp = A.values[i * m + j];  // set temporary value before swapin
+                    // Swap all row values given that the diagonal of
+                    // row k is larger than the diagonal of row i
                     A.values[i * m + j] = A.values[k * m + j];
                     A.values[k * m + j] = *temp;
                     delete temp;
                 }
                 auto* temp2 = new double;
                 *temp2 = b[i];
+                // Similar for b
                 *(b + i) = b[k];
                 *(b + k) = *temp2;
                 delete temp2;
@@ -723,135 +630,71 @@ void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, T er, T urf)
         }
     }
 
-    // start of iterations
+    // Attempt to send coefficients for computation
+    // that can fit in the cache memory (cache-aware).
+    // Definition of loop start (minn)
+    // loop finish (maxx) and tile size
+    // (number of columns to be looped, tile_size)
+    int* minn = new int[tiles + 1]{0};
+    int tile_size = (int)(n /tiles);
+    int* maxx = new int[tiles + 1]{0};
+    for (int z = 0; z < tiles; z++){
+        minn[z + 1] = z * tile_size;
+        maxx[z + 1] = maxx[z] + tile_size;
+    }
+    // beginning of iterations
     for (niter = 0; niter < maxit; niter++) {
 
-        double ea = 0.0;
+        double ea = 0.0;  // current error initialization
+        
+        // loop that goes through the tiles of A
+        for (int z = 0; z < tiles; z++){
+            // loop that calculates the coefficient within each tile
+            for (i = minn[z + 1]; i < maxx[z + 1]; i++) {
+                xold = x[i];
+                sum = b[i];
 
-        // cout << "iter " << niter << endl;  // print iterations until convergence
-
-        // new x's calculation
-        for (i = 0; i < n; i++) {
-            xold = x[i];
-            sum = b[i];
-
-            // cout << "i " << i << endl;
-
-            for (j = 0; j <= i - 1; j++) {
-                sum += -A.values[i * n + j] * x[j];
-                // cout << "iter j1: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
-            }
-
-            for (j = i + 1; j < n; j++) {
-                sum += -A.values[i * n + j] * x[j];
-                // cout << "iter j2: " << j << ", A: " << A.values[i * n + j] << ", x: " << x[j] << ", sum: " << sum << endl;
-            }
-
-            *(x + i) = sum / A.values[i * n + i];
-
-            // error and underelaxation
-            double ern = abs(*(x + i) - xold);
-
-            // cout << i << " " <<  ern << endl;
-            // cout << endl;
-            // ea = __max(ea, ern);
-            ea = max(ea, ern);
-            *(x + i) = *(x + i) * urf + xold * (1. - urf);
-        }
-
-        // Checks for exit
-        if (ea < er) {
-            break;
-        }
-
-    }
-
-    if (niter >= maxit) {
-        cout << "Warning! Iterations' limit";
-    }
-
-    //// Verification
-    //for (i = 0; i < n; i++) {
-    //    sum = - b[i];
-    //    for (j = 0; j < n; j++) {
-    //        sum += A.values[i * n + j] * x[j];
-    //    }
-    //    rmx = __max(abs(sum), rmx);
-    //}
-}
-
-template<class T>
-void gauss_seidel_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, T er, T urf)
-{
-    if (A.rows != A.cols)
-    {
-        cerr << "Cannot apply Gauss-Seidel on non-square matrix. \n";
-        return;
-    }
-
-    const int n = A.cols;
-    const int m = A.cols;
-    int i, j, k, niter;
-    double sum, xold;
-    double rmx = 0.0;
-
-    // initialisation of x
-    for (i = 0; i < n; i++) {
-        *(x + i) = 0.0;
-    }
-
-    //Pivotisation
-    for (i = 0; i < m; i++) {
-        for (k = i + 1; k < m; k++) {
-            if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
-                for (j = 0; j < m; j++) {
-                    auto* temp = new double;
-                    *temp = A.values[i * m + j];
-                    A.values[i * m + j] = A.values[k * m + j];
-                    A.values[k * m + j] = *temp;
-                    delete temp;
+                // Perform two loops to skip the diagonal elements
+                // in the calculation of the sum
+                for (j = 0; j <= i - 1; j++) {
+                    sum += -A.values[i * n + j] * x[j];
                 }
-                auto* temp2 = new double;
-                *temp2 = b[i];
-                *(b + i) = b[k];
-                *(b + k) = *temp2;
-                delete temp2;
+
+                for (j = i + 1; j < n; j++) {
+                    sum += -A.values[i * n + j] * x[j];
+                }
+
+                *(x + i) = sum / A.values[i * n + i];
+
+                // error and underelaxation
+                double ern = abs(*(x + i) - xold);
+
+                // keep the larger error between previous and current calculations
+                ea = max(ea, ern);
+                
+                // Account for underelaxation factor to increase the stability
+                // by considering the previous solution for x in the new x calculation.
+                // The smaller the relaxation factor (urf), the more stable the method
+                // becomes, however at a computational cost translated into an increase
+                // of required iterations for convergence.
+                *(x + i) = *(x + i) * urf + xold * (1. - urf);
             }
         }
-    }
-
-    // start of iterations
-    for (niter = 0; niter < maxit; niter++) {
-
-        double ea = 0.0;
         // new x's calculation
-        for (i = 0; i < n; i++) {
-            xold = x[i];
-            sum = b[i];
-            auto* Avec = new T[A.cols];
-            for (int j = 0; j < A.cols; j++)
-            {
-                Avec[j] = A.values[i * A.cols + j];
-            }
-            sum -= cblas_ddot(A.rows, Avec, 1, x, 1);
-            sum += A.values[i * A.cols + i] * x[i];
-            delete[] Avec;
 
-            *(x + i) = sum / A.values[i * n + i];
 
-            // error and underelaxation
-            double ern = abs(*(x + i) - xold);
-            ea = max(ea, ern);
-            *(x + i) = *(x + i) * urf + xold * (1. - urf);
-        }
-
-        // Checks for exit
+        // Checks for exit. If the current error (ea) is smaller
+        // then the error input (er) the computations are terminated
         if (ea < er) {
             break;
         }
+
     }
 
     if (niter >= maxit) {
+        // Warn the user in case maximum iterations have been reached
+        // This could indicate the method has not succesfully converged
+        // towards the proposed solution.
         cout << "Warning! Iterations' limit";
     }
 }
@@ -870,7 +713,6 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
     {
         row_diff[i] = A.row_position[i + 1] - A.row_position[i];
     }
-
     int m = A.rows;
     int n = A.cols;
     unique_ptr<T[]> sum(new T[m]);
@@ -898,10 +740,11 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
                 }
                 counter++;
             }
-            x[i] = 1. / diag_values[i] * (b[i] - sum[i]); //Gauss_seidle method is very similar with Jacobi method
+            x[i] = 1. / diag_values[i] * (b[i] - sum[i]); //Gauss_seidle method is very similar to Jacobi method
             // The difference is that Gauss-Seidle method uses the latest updated values in the iteration while the
-            //Jacobi method stores the values in one new array and uses the value obtained from the last step
+            //Jacobi method stores the values in one new array and uses the value obtained from the last i iteration
         }
+        
         double pow_sum = 0;
         for (int i = 0; i < A.rows; i++)
         {
@@ -911,6 +754,8 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
             }
             pow_sum += pow(total_sum[i] - b[i], 2);
         }
+        
+        
         //calculate the error
         double residual = sqrt(pow_sum);
         if (residual < tolerance)
@@ -929,10 +774,9 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
     {
         cerr << "Input matrix A must be a sqaure matrix!" << endl;
     }
-    //have a guess of the size of output matrix, which is same as the row's size of matrix A
-    //use unique pointer so that users do not need to delete the pointer
-    unique_ptr<T[]> x_new_array(new T[A.rows]);
+    //have a guess of the size of output matrix, which is the same as the row's size of matrix A
     //use one new array to store the new solution, which avoids over-lapping the previous solution
+    unique_ptr<T[]> x_new_array(new T[A.cols]);
     //initialize x array and new x array as zero arrays
     for (int i = 0; i < A.rows; i++)
     {
@@ -957,7 +801,7 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
             {
                 if (i != j)
                 {
-                    //calculate the dot product of two arrays
+                    //calculate the dot product of two arrays A[i]*x[j] (except the diagonal values of A) for each row
                     mul_Ax[i] += A.values[i * A.cols + j] * x[j];
                 }
                 x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i]);
@@ -988,73 +832,6 @@ void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
 }
 
 template<class T>
-void jacobi_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
-//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
-{
-    //set the condition that matrix A must be a square matrix
-    if (A.rows != A.cols)
-    {
-        cerr << "Input matrix A must be a sqaure matrix!" << endl;
-    }
-    //have a guess of the size of output matrix, which has the same size of the rows size of matrix A
-    unique_ptr<T[]> x_new_array(new T[A.rows]);
-
-    //initialize the x matrix and new x matrix as zero matrixs
-    for (int i = 0; i < A.rows; i++)
-    {
-        x[i] = 0;
-        x_new_array[i] = 0;
-        //cerr << x_new_array[i]<< endl;
-    }
-
-    unique_ptr<T[]> total_sum(new T[A.rows]);
-    unique_ptr<double[]> mul_Ax(new double[A.rows]);
-    for (int k = 0; k <maxit; k++) //record the number of iteration
-    {
-
-        for (int i = 0; i < A.rows; i++)
-        {
-            total_sum[i] = 0;
-            mul_Ax[i] = 0;
-        }
-
-        for (int i = 0; i < A.rows; i++)
-        {
-            auto* Avec = new T[A.cols];
-            for (int j = 0; j < A.cols; j++)
-            {
-                Avec[j] = A.values[i * A.cols + j];
-            }
-            mul_Ax[i] += cblas_ddot(A.rows, Avec, 1, x, 1);
-            mul_Ax[i] -= A.values[i * A.cols + i] * x[i];
-            x_new_array[i] = (1. / A.values
-                              [i * A.cols + i]) * (b[i] - mul_Ax[i]);
-            delete[] Avec;
-        }
-        double pow_sum = 0;
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (int j = 0; j < A.cols; j++)
-            {
-                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
-
-            }
-            pow_sum += pow(total_sum[i] - b[i], 2);
-        }
-        //calculate the error
-        double residual = sqrt(pow_sum);
-        if (residual < tolerance)
-        {
-            break;
-        }
-        for (int i = 0; i < A.rows; i++)
-        {
-            x[i] = x_new_array[i];
-        }
-    }
-}
-
-template<class T>
 void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
 //user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
 {
@@ -1063,10 +840,8 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
     {
         cerr << "Input matrix A must be a sqaure matrix!" << endl;
     }
-    //have a guess of the size of output matrix, which is same as the row's size of matrix A
-    //use unique pointer so that users do not need to delete the pointer
-    unique_ptr<T[]> x_new_array(new T[A.cols]);
     //use one new array to store the new solution, which avoids over-lapping the previous solution
+    unique_ptr<T[]> x_new_array(new T[A.cols]);
     //initialize x matrix and new x matrix as zero matrixs
     for (int i = 0; i < A.rows; i++)
     {
@@ -1076,10 +851,10 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
     unique_ptr<int[]> row_diff(new int[A.cols]);
     //create a vector to store the diagonal values(A[i,i])
     vector<int> diag_values;
-    // sum pointer is dot product of A[i]*x[j] (except the diagonal values of A),
+    //sum array pointer is to store the dot product of A[i]*x[j] (except the diagonal values of A),
     //which is also the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
     unique_ptr<T[]> sum(new T[A.rows]);
-    //total_sum is the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
+    //total_sum array pointer is to store the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
     unique_ptr<T[]> total_sum(new double[A.rows]);
     //get the numbers of nonzero values for each row
     for (int i = 0; i < A.cols; i++)
@@ -1088,7 +863,7 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
     }
     for (int k = 0; k < maxit; k++) //the number of iterations
     {
-        for (int i = 0; i < A.rows; i++)
+        for (int i = 0; i < A.rows; i++) //initialization of two dot pruduct array pointers
         {
             sum[i] = 0;
             total_sum[i] = 0;
@@ -1102,13 +877,13 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
                 {
                     diag_values.push_back(A.values[counter]);
                 }
-                else
+                else //calculate the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
                 {
                     sum[i] += A.values[counter] * x[A.col_index[counter]];
                 }
                 counter++;
             }
-            x_new_array[i] = (1. / diag_values[i]) * (b[i] - sum[i]); //Jacobi stores the array in one new array
+            x_new_array[i] = (1. / diag_values[i]) * (b[i] - sum[i]); //Jacobi stores the solution in one new array
         }
         //use pow_sum to calculate the norm
         double pow_sum = 0;
@@ -1126,25 +901,32 @@ void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
         {
             break;
         }
-        for (int i = 0; i < A.rows; i++)
+        for (int m = 0; m < A.rows; m++)
         {
             //update the solution until the iteration over i finishes
-            x[i] = x_new_array[i];
+            x[m] = x_new_array[m];
         }
     }
 }
 
 template<class T>
-void thomas(Matrix<T>& A, T* x, T* r)
+void thomas(Matrix<T>& A, T* x, T* b)
 {
+    // solves systems of linear eqs., with the Gauss-Seidel method
+    
+    // Initialize 3*n array
     auto* A_array = new T[3 * A.rows];
     for (int i = 0; i < 3 * A.rows; i++)
     {
         A_array[i] = 0;
     }
-    for (int i = 0; i < A.rows; i++)
+    
+    int i, j;
+    // Perform Thomas method by only accessing
+    // the tri-diagonal elements of A
+    for (i = 0; i < A.rows; i++)
     {
-        for (int j = 0; j < A.cols; j++)
+        for (j = 0; j < A.cols; j++)
         {
             if (j == i + 1)
             {
@@ -1160,40 +942,48 @@ void thomas(Matrix<T>& A, T* x, T* r)
             }
         }
     }
-    int i;
+
     T term;
     const int n = A.cols;
     A_array[2 * n] = A_array[2 * n] / A_array[1 * n];
-    r[0] = r[0] / A_array[1 * n];
-    //-- forward elimination
+    b[0] = b[0] / A_array[1 * n];
+    
+    //-- forward elimination for thomas
     for (i = 1; i < n; i++) {
         term = A_array[1 * n + i] - A_array[0 * n + i] * A_array[2 * n + i - 1];
         A_array[2 * n + i] = A_array[2 * n + i] / term;
-        r[i] = (r[i] - A_array[0 * n + i] * r[i - 1]) / term;
+        b[i] = (b[i] - A_array[0 * n + i] * b[i - 1]) / term;
     }
-    //-- back substitution
-    x[n - 1] = r[n - 1];
+    //-- back substitution for thomas
+    x[n - 1] = b[n - 1];
     for (i = n - 2; i >= 0; i--) {
-            x[i] = r[i] - A_array[2 * n + i] * x[i + 1];
+            x[i] = b[i] - A_array[2 * n + i] * x[i + 1];
         }
     delete[] A_array;
 }
 
 template<class T>
 void cholesky_fact(Matrix<T>& A, T* x, T* b) {
+    
+    // cholesky solver factorisation and substitutions component
 
+    // Initialization of iteration counters
     int i, j, k;
     const int n = A.rows;
-    //-- elements of [L]^T  ------------------------------
+    
+    // Initialization of upper triangular (au)
+    // and lower triangular (al) A arrays.
+    Matrix<T>* au = new Matrix<T>(n, n, true);
+    Matrix<T>* al = new Matrix<T>(n, n, true);
+    
+    // Produce the elements of [L]^T
     for (i = 0; i < n - 1; i++) {   // !!!!!!!!!!!!
         for (j = i + 1; j < n; j++) {
             A.values[i * n + j] = A.values[j * n + i];
         }
     }
 
-    Matrix<T>* au = new Matrix<T>(n, n, true);
-    Matrix<T>* al = new Matrix<T>(n, n, true);
-
+    // Copy the values of A in au and al
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
             al->values[i * n + j] = 0.;
@@ -1209,6 +999,9 @@ void cholesky_fact(Matrix<T>& A, T* x, T* b) {
 
     double* y = new double[n];
     *y = b[0] / al->values[0];
+    
+    // Perform forward and backward substitutions
+    // to calculate final solution
     al->forward_sub(y, b);
     au->backward_sub(x, y);
 
@@ -1219,11 +1012,14 @@ void cholesky_fact(Matrix<T>& A, T* x, T* b) {
 
 template<class T>
 void cholesky_dense(Matrix<T>& A, T* x, T* b) {
+    
+    // Cholesky solver routine for dense arrays
 
+    // Initialization of iteration counters
     int i, j, k;
     const int n = A.rows;
 
-    // Dense matrix
+    // Dense matrix calculations
     for (k = 0; k < n; k++) {
 
         A.values[k * n + k] = sqrt(A.values[k * n + k]);
@@ -1238,25 +1034,34 @@ void cholesky_dense(Matrix<T>& A, T* x, T* b) {
         }
     }
     
+    // Call the factorization and substitutions component to produce a solution x
     cholesky_fact(A, x, b);
 }
 
 
 template<class T>
-void cholesky_sparse(Matrix<T>& A, T* x, T* b)
-{
+void cholesky_sparse(Matrix<T>& A, T* x, T* b) {
+    
+    // Cholesky solver routine for sparse arrays
+
+    // Initialization of iteration counters
     int i, j, k;
     int n = A.rows;
-    int* sk = new int[n + 1];
+    
+    // Creation of a vector which will count
+    // the number of non-zero elements in each column
 
-    // Sparse matrix
+
+    // Sparse matrix calculations
     for (k = 0; k < n; k++) {
         A.values[k * n + k] = sqrt(A.values[k * n + k]);
-
+        vector<int> sk(n + 1);
         int nsk = 0;
         for (i = k + 1; i < n; i++) {
             A.values[i * n + k] = A.values[i * n + k] / A.values[k * n + k];
 
+            // Count how many non-zero values there are in column k
+            // and store that number in sk
             if (A.values[i * n + k] != 0.) {
                 
                 nsk += 1;
@@ -1265,6 +1070,8 @@ void cholesky_sparse(Matrix<T>& A, T* x, T* b)
             }
         }
 
+        // Perform calculations only if there was at least one non-zero values in
+        // k column and only access these specific values.
         if (nsk > 0); {
             for (j = sk[1]; j <= sk[nsk]; j++) {
                 for (i = j; i <= sk[nsk]; i++) {
@@ -1272,9 +1079,250 @@ void cholesky_sparse(Matrix<T>& A, T* x, T* b)
                 }
             }
         }
+        
+        // It must be noted however that while the above method works well for med-range dimensions
+        // the performance gain decreases as the array dimensions increase. This happens due to the fact
+        // that Cholesky produces an exponentially increasing amount of non-zero elements in positions that
+        // used to be zero, as we move from the left to the right side of the coefficient array.
+        // As a result, the strategy of avoiding non-zero elements becomes more ineffective for large arrays.
     }
 
-    delete[] sk;
-
+    // Call the factorization and substitutions component to produce a solution x
     cholesky_fact(A, x, b);
+}
+
+template<class T>
+void LU_dense_blas(Matrix<T>& A, T* x, T* b)
+{
+    if (A.rows != A.cols)
+    {
+        cerr << "Cannot decompose non-square matrix into LU. \n";
+        return;
+    }
+
+    const int m = A.cols;
+    auto* L = new Matrix<T>(m, m, true);
+    auto* P_ = new Matrix<T>(m, m, true);
+    
+    for (int i = 0; i < m * m; i++)
+    {
+        L->values[i] = 0;
+    }
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            if (i == j) { P_->values[i * m + j] = 1; }
+            else P_->values[i * m + j] = 0;
+        }
+    }
+
+    for (int k = 0; k < m - 1; k++)
+    {
+        int index = k * A.cols + k;
+        for (int i = k; i < A.cols; i++)
+        {
+            if (abs(A.values[i * A.cols + k]) > abs(A.values[index]))
+            {
+                index = i * A.cols + k;
+            }
+        }
+        int j = index / A.cols;
+
+        for (int i = 0; i < A.cols; i++)
+        {
+            T* numA = new T;
+            *numA = A.values[k * A.rows + i];
+            A.values[k * A.rows + i] = A.values[j * A.rows + i];
+            A.values[j * A.rows + i] = *numA;
+
+            T* numP_ = new T;
+            *numP_ = P_->values[k * P_->rows + i];
+            P_->values[k * P_->rows + i] = P_->values[j * P_->rows + i];
+            P_->values[j * P_->rows + i] = *numP_;
+
+            T* numL = new T;
+            *numL = L->values[k * L->rows + i];
+            L->values[k * L->rows + i] = L->values[j * L->rows + i];
+            L->values[j * L->rows + i] = *numL;
+
+            delete numA;
+            delete numP_;
+            delete numL;
+        }
+        
+        int nvec = m - k;
+        double* Avec_current = new double[nvec];
+        for (int j = k; j < m; j++)
+        {
+            Avec_current[j - k] = A.values[k * m + j];
+        }
+        for (int i = k + 1; i < m; i++)
+        {
+            const double s = A.values[i * m + k] / A.values[k * m + k];
+            L->values[i * m + k] = s;
+            double* Avec_found = new double[m - k];
+            for (int j = k; j < m; j++)
+            {
+                Avec_found[j - k] = A.values[i * m + j];
+            }
+            // vector operation using daxpy
+            cblas_daxpy(m - k, -s, Avec_current, 1, Avec_found, 1);
+            for (int p = k; p < m; p++)
+            {
+                A.values[i * m + p] = Avec_found[p - k];
+            }
+            delete[] Avec_found;
+        }
+        delete[] Avec_current;
+    }
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            if (i == j) { L->values[i * m + j] = 1; }
+        }
+    }
+
+    auto* pinvb = new double[m * 1];
+    P_->matVecMult(b, pinvb);
+    auto* y = new double[m * 1];
+    L->forward_sub(y, pinvb);
+    A.backward_sub(x, y);
+
+    delete L;
+    delete P_;
+    delete[] pinvb;
+    delete[] y;
+}
+
+template<class T>
+void gauss_seidel_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, double er, double urf)
+{
+    if (A.rows != A.cols)
+    {
+        cerr << "Cannot apply Gauss-Seidel on non-square matrix. \n";
+        return;
+    }
+
+    const int n = A.cols;
+    const int m = A.cols;
+    int i, j, k, niter;
+    double sum, xold;
+    double rmx = 0.0;
+
+    for (i = 0; i < n; i++) {
+        *(x + i) = 0.0;
+    }
+
+    for (i = 0; i < m; i++) {
+        for (k = i + 1; k < m; k++) {
+            if (abs(A.values[i * m + i]) < abs(A.values[k * m + i])) {
+                for (j = 0; j < m; j++) {
+                    auto* temp = new double;
+                    *temp = A.values[i * m + j];
+                    A.values[i * m + j] = A.values[k * m + j];
+                    A.values[k * m + j] = *temp;
+                    delete temp;
+                }
+                auto* temp2 = new double;
+                *temp2 = b[i];
+                *(b + i) = b[k];
+                *(b + k) = *temp2;
+                delete temp2;
+            }
+        }
+    }
+    
+    for (niter = 0; niter < maxit; niter++) {
+
+        double ea = 0.0;
+        for (i = 0; i < n; i++) {
+            xold = x[i];
+            sum = b[i];
+            auto* Avec = new T[A.cols];
+            for (int j = 0; j < A.cols; j++)
+            {
+                Avec[j] = A.values[i * A.cols + j];
+            }
+            // dot product using blas
+            sum -= cblas_ddot(A.rows, Avec, 1, x, 1);
+            sum += A.values[i * A.cols + i] * x[i];
+            delete[] Avec;
+
+            *(x + i) = sum / A.values[i * n + i];
+            
+            double ern = abs(*(x + i) - xold);
+            ea = max(ea, ern);
+            *(x + i) = *(x + i) * urf + xold * (1. - urf);
+        }
+        if (ea < er) {
+            break;
+        }
+    }
+
+    if (niter >= maxit) {
+        cout << "Warning! Iterations' limit";
+    }
+}
+
+template<class T>
+void jacobi_dense_blas(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
+{
+    if (A.rows != A.cols)
+    {
+        cerr << "Input matrix A must be a sqaure matrix!" << endl;
+    }
+    unique_ptr<T[]> x_new_array(new T[A.rows]);
+
+    for (int i = 0; i < A.rows; i++)
+    {
+        x[i] = 0;
+        x_new_array[i] = 0;
+    }
+
+    unique_ptr<T[]> total_sum(new T[A.rows]);
+    unique_ptr<double[]> mul_Ax(new double[A.rows]);
+    for (int k = 0; k <maxit; k++)
+    {
+        for (int i = 0; i < A.rows; i++)
+        {
+            total_sum[i] = 0;
+            mul_Ax[i] = 0;
+        }
+
+        for (int i = 0; i < A.rows; i++)
+        {
+            auto* Avec = new T[A.cols];
+            for (int j = 0; j < A.cols; j++)
+            {
+                Avec[j] = A.values[i * A.cols + j];
+            }
+            // cblas dot product function
+            mul_Ax[i] += cblas_ddot(A.rows, Avec, 1, x, 1);
+            mul_Ax[i] -= A.values[i * A.cols + i] * x[i];
+            x_new_array[i] = (1. / A.values
+                              [i * A.cols + i]) * (b[i] - mul_Ax[i]);
+            delete[] Avec;
+        }
+        double pow_sum = 0;
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (int j = 0; j < A.cols; j++)
+            {
+                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
+
+            }
+            pow_sum += pow(total_sum[i] - b[i], 2);
+        }
+        double residual = sqrt(pow_sum);
+        if (residual < tolerance)
+        {
+            break;
+        }
+        for (int i = 0; i < A.rows; i++)
+        {
+            x[i] = x_new_array[i];
+        }
+    }
 }

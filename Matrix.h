@@ -18,8 +18,9 @@ public:
 	// dont own our own memory
 	Matrix(int rows, int cols, T* values_ptr);
 
-	// copy constructor
-	Matrix(const Matrix &B);
+    // hard copy constructor
+    // avoid changing the copy of the matrix due to the change of the original one
+    Matrix(const Matrix &B);
 
 	// destructor
 	// virtual ~Matrix() = 0; pure virtual function: the sub class MUST overwrite this func
@@ -31,13 +32,18 @@ public:
 
 	// some basic functions
 	void transpose(Matrix<T>& itself);
-    // generate random n x n matrix
+    // generate random n x n dense matrix
+    //if dom, dominant on the diagonal
     void genRanDense(bool dom);
+    // generate random n x n sparse matrix, sparsity(<1) represents the sparsity of the sparse matrix
     void genRanSparse(double sparsity, bool dom);
+    //generate random tri matrix for testing Thomas solution
     void genRanTri(bool dom);
 	void matMatMult(Matrix& mat_right, Matrix& output);
 	void matVecMult(T* vec, T* output);
+    // forward substitution, assume this is a lower triangle
     void forward_sub(T* x, T* b);
+    // backward substitution, assume this is a upper triangle
     void backward_sub(T* x, T* b);
 	
 	/////// public variables
@@ -56,4 +62,3 @@ private:
 	
 
 };
-
