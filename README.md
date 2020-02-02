@@ -45,4 +45,4 @@
 	* relaxation factor: for more stable performance
 
 # Additional Notes
-* Rewritten solvers using BLAS subroutines doesn't include detailed comments. Please find it in its dense only version.
+* Rewritten solvers using BLAS subroutines have no detailed comments. Please find it in its dense only version.
