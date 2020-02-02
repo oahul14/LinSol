@@ -741,7 +741,7 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
                 counter++;
             }
             x[i] = 1. / diag_values[i] * (b[i] - sum[i]); //Gauss_seidle method is very similar to Jacobi method
-            // The difference is that Gauss-Seidle method uses the latest updated values in the iteration while the
+            // The difference is that Gauss-Seidel method uses the latest updated values in the iteration while the
             //Jacobi method stores the values in one new array and uses the value obtained from the last i iteration
         }
         
