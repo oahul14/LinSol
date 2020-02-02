@@ -581,6 +581,150 @@ void gauss_elimination(Matrix<T>& A, T* x, T* b)
 }
 
 template<class T>
+void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
+//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
+{
+    //set the condition that matrix A must be a square matrix
+    if (A.rows != A.cols)
+    {
+        cerr << "Input matrix A must be a sqaure matrix!" << endl;
+    }
+    //have a guess of the size of output matrix, which is the same as the row's size of matrix A
+    //use one new array to store the new solution, which avoids over-lapping the previous solution
+    unique_ptr<T[]> x_new_array(new T[A.cols]);
+    //initialize x array and new x array as zero arrays
+    for (int i = 0; i < A.rows; i++)
+    {
+        x[i] = 0;
+        x_new_array[i] = 0;
+    }
+    //mul_Ax is the dot product of A[i]*x[j] (except the diagonal values of A),
+    //which is also the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
+    unique_ptr<double[]> mul_Ax(new double[A.rows]);
+    //total_sum is the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
+    unique_ptr<T[]> total_sum(new T[A.rows]);
+    for (int k = 0; k <maxit; k++) //record the number of iteration
+    {
+        for (int i = 0; i < A.rows; i++)
+        {
+            total_sum[i] = 0;
+            mul_Ax[i] = 0;
+        }
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (int j = 0; j < A.cols; j++)
+            {
+                if (i != j)
+                {
+                    //calculate the dot product of two arrays A[i]*x[j] (except the diagonal values of A) for each row
+                    mul_Ax[i] += A.values[i * A.cols + j] * x[j];
+                }
+                x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i]);
+            }
+        }
+        //use pow_sum to calculate the norm
+        double pow_sum = 0;
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (int j = 0; j < A.cols; j++)
+            {
+                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
+            }
+            pow_sum += pow(total_sum[i] - b[i], 2);
+        }
+        //calculate the norm difference between ( A @ x_new ) and b array
+        double residual = sqrt(pow_sum);
+        if (residual < tolerance) //if the residual is less than user-input tolerance, end the loop
+        {
+            break;
+        }
+        for (int i = 0; i < A.rows; i++)
+        {
+            //update the solution until the iteration over i finishes
+            x[i] = x_new_array[i];
+        }
+    }
+}
+
+template<class T>
+void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
+//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
+{
+    //set the condition that matrix A must be a square matrix
+    if (A.rows != A.cols)
+    {
+        cerr << "Input matrix A must be a sqaure matrix!" << endl;
+    }
+    //use one new array to store the new solution, which avoids over-lapping the previous solution
+    unique_ptr<T[]> x_new_array(new T[A.cols]);
+    //initialize x matrix and new x matrix as zero matrixs
+    for (int i = 0; i < A.rows; i++)
+    {
+        x[i] = 0;
+        x_new_array[i] = 0;
+    }
+    unique_ptr<int[]> row_diff(new int[A.cols]);
+    //create a vector to store the diagonal values(A[i,i])
+    vector<int> diag_values;
+    //sum array pointer is to store the dot product of A[i]*x[j] (except the diagonal values of A),
+    //which is also the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
+    unique_ptr<T[]> sum(new T[A.rows]);
+    //total_sum array pointer is to store the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
+    unique_ptr<T[]> total_sum(new double[A.rows]);
+    //get the numbers of nonzero values for each row
+    for (int i = 0; i < A.cols; i++)
+    {
+        row_diff[i] = A.row_position[i + 1] - A.row_position[i];
+    }
+    for (int k = 0; k < maxit; k++) //the number of iterations
+    {
+        for (int i = 0; i < A.rows; i++) //initialization of two dot pruduct array pointers
+        {
+            sum[i] = 0;
+            total_sum[i] = 0;
+        }
+        int counter = 0;//use counter to track the index of each value
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (int j = 0; j < row_diff[i]; j++)
+            {
+                if (A.col_index[counter] == i) //find diagonal values(A[i,i])
+                {
+                    diag_values.push_back(A.values[counter]);
+                }
+                else //calculate the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
+                {
+                    sum[i] += A.values[counter] * x[A.col_index[counter]];
+                }
+                counter++;
+            }
+            x_new_array[i] = (1. / diag_values[i]) * (b[i] - sum[i]); //Jacobi stores the solution in one new array
+        }
+        //use pow_sum to calculate the norm
+        double pow_sum = 0;
+        for (int i = 0; i < A.rows; i++)
+        {
+            for (counter = A.row_position[i]; counter < A.row_position[i] + row_diff[i]; counter++)
+            {
+                total_sum[i] += A.values[counter] * x_new_array[A.col_index[counter]];
+            }
+            pow_sum += pow(total_sum[i] - b[i], 2);
+        }
+        //calculate the norm difference between ( A @ x_new ) and b array
+        double residual = sqrt(pow_sum);
+        if (residual < tolerance)
+        {
+            break;
+        }
+        for (int m = 0; m < A.rows; m++)
+        {
+            //update the solution until the iteration over i finishes
+            x[m] = x_new_array[m];
+        }
+    }
+}
+
+template<class T>
 void gauss_seidel_dense(Matrix<T>& A, T* x, T* b, int maxit, double er, double urf, int tiles)
 {
     // solves systems of linear eqs., with the Gauss-Seidel method
@@ -761,150 +905,6 @@ void gauss_seidel_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double toleranc
         if (residual < tolerance)
         {
             break;
-        }
-    }
-}
-
-template<class T>
-void jacobi_dense(Matrix<T>& A, T* x, T* b, int maxit, double tolerance)
-//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
-{
-    //set the condition that matrix A must be a square matrix
-    if (A.rows != A.cols)
-    {
-        cerr << "Input matrix A must be a sqaure matrix!" << endl;
-    }
-    //have a guess of the size of output matrix, which is the same as the row's size of matrix A
-    //use one new array to store the new solution, which avoids over-lapping the previous solution
-    unique_ptr<T[]> x_new_array(new T[A.cols]);
-    //initialize x array and new x array as zero arrays
-    for (int i = 0; i < A.rows; i++)
-    {
-        x[i] = 0;
-        x_new_array[i] = 0;
-    }
-    //mul_Ax is the dot product of A[i]*x[j] (except the diagonal values of A),
-    //which is also the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
-    unique_ptr<double[]> mul_Ax(new double[A.rows]);
-    //total_sum is the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
-    unique_ptr<T[]> total_sum(new T[A.rows]);
-    for (int k = 0; k <maxit; k++) //record the number of iteration
-    {
-        for (int i = 0; i < A.rows; i++)
-        {
-            total_sum[i] = 0;
-            mul_Ax[i] = 0;
-        }
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (int j = 0; j < A.cols; j++)
-            {
-                if (i != j)
-                {
-                    //calculate the dot product of two arrays A[i]*x[j] (except the diagonal values of A) for each row
-                    mul_Ax[i] += A.values[i * A.cols + j] * x[j];
-                }
-                x_new_array[i] = (1. / A.values[i * A.cols + i]) * (b[i] - mul_Ax[i]);
-            }
-        }
-        //use pow_sum to calculate the norm
-        double pow_sum = 0;
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (int j = 0; j < A.cols; j++)
-            {
-                total_sum[i] += A.values[i * A.cols + j] * x_new_array[j];
-            }
-            pow_sum += pow(total_sum[i] - b[i], 2);
-        }
-        //calculate the norm difference between ( A @ x_new ) and b array
-        double residual = sqrt(pow_sum);
-        if (residual < tolerance) //if the residual is less than user-input tolerance, end the loop
-        {
-            break;
-        }
-        for (int i = 0; i < A.rows; i++)
-        {
-            //update the solution until the iteration over i finishes
-            x[i] = x_new_array[i];
-        }
-    }
-}
-
-template<class T>
-void jacobi_sparse(CSRMatrix<T>& A, T* x, T* b, int maxit, double tolerance)
-//user can input Matrix A and array b and can also define iteration tolerance and number of iteration times
-{
-    //set the condition that matrix A must be a square matrix
-    if (A.rows != A.cols)
-    {
-        cerr << "Input matrix A must be a sqaure matrix!" << endl;
-    }
-    //use one new array to store the new solution, which avoids over-lapping the previous solution
-    unique_ptr<T[]> x_new_array(new T[A.cols]);
-    //initialize x matrix and new x matrix as zero matrixs
-    for (int i = 0; i < A.rows; i++)
-    {
-        x[i] = 0;
-        x_new_array[i] = 0;
-    }
-    unique_ptr<int[]> row_diff(new int[A.cols]);
-    //create a vector to store the diagonal values(A[i,i])
-    vector<int> diag_values;
-    //sum array pointer is to store the dot product of A[i]*x[j] (except the diagonal values of A),
-    //which is also the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
-    unique_ptr<T[]> sum(new T[A.rows]);
-    //total_sum array pointer is to store the dot product of two arrays( A[i,:] @ x[:] ), which will be used to calculate the norm
-    unique_ptr<T[]> total_sum(new double[A.rows]);
-    //get the numbers of nonzero values for each row
-    for (int i = 0; i < A.cols; i++)
-    {
-        row_diff[i] = A.row_position[i + 1] - A.row_position[i];
-    }
-    for (int k = 0; k < maxit; k++) //the number of iterations
-    {
-        for (int i = 0; i < A.rows; i++) //initialization of two dot pruduct array pointers
-        {
-            sum[i] = 0;
-            total_sum[i] = 0;
-        }
-        int counter = 0;//use counter to track the index of each value
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (int j = 0; j < row_diff[i]; j++)
-            {
-                if (A.col_index[counter] == i) //find diagonal values(A[i,i])
-                {
-                    diag_values.push_back(A.values[counter]);
-                }
-                else //calculate the sum of ( A[i, :i] @ x[:i] ) and ( A[i, i+1:] @ x[i+1:] )
-                {
-                    sum[i] += A.values[counter] * x[A.col_index[counter]];
-                }
-                counter++;
-            }
-            x_new_array[i] = (1. / diag_values[i]) * (b[i] - sum[i]); //Jacobi stores the solution in one new array
-        }
-        //use pow_sum to calculate the norm
-        double pow_sum = 0;
-        for (int i = 0; i < A.rows; i++)
-        {
-            for (counter = A.row_position[i]; counter < A.row_position[i] + row_diff[i]; counter++)
-            {
-                total_sum[i] += A.values[counter] * x_new_array[A.col_index[counter]];
-            }
-            pow_sum += pow(total_sum[i] - b[i], 2);
-        }
-        //calculate the norm difference between ( A @ x_new ) and b array
-        double residual = sqrt(pow_sum);
-        if (residual < tolerance)
-        {
-            break;
-        }
-        for (int m = 0; m < A.rows; m++)
-        {
-            //update the solution until the iteration over i finishes
-            x[m] = x_new_array[m];
         }
     }
 }
