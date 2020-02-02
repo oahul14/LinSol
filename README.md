@@ -36,7 +36,7 @@
 	* Thomas Algorithm
 
 ## Parameters
-$$$Ax = b$
+$$Ax = b$$
 * A the left hand side matrix
 * b the right hand side constants
 * For iterative solvers:
