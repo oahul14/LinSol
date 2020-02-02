@@ -80,9 +80,9 @@ Heath M.T., “Scientific computing: An introductory survey”, 2nd Internationa
 	* Implement LU decomposition for dense and sparse matrices; 
 	* Writing the main function UI and packaging tests in testing.cpp/.h; 
 	* Re-implement three dense solvers with low level BLAS functions; 
-	* Managing GitHub versions.
-	* Design BLAS function and testing structure;
-	* Debugging.
+	* Implement functions for Matrix and CSRMatrix;
+	* Managing GitHub versions and debugging;
+	* Design BLAS function and testing structure.
 * Lingaona Zhu:
 	* Implement Gauss-seidel method for sparse matrices; 
 	* Implement Jacobi method for dense and sparse matrices;
