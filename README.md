@@ -16,7 +16,7 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 * Then in the command line compile using: 
 ```gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas main.cpp```
 * Note that feel free to use any compiler as long as it supports standard c++17
-* If using Windows please have OpenBLAS installed first, or other open libraries that include ```<cblas.h>```.
+* If using Windows please have ```OpenBLAS``` installed first, or other open libraries that include ```<cblas.h>```.
 
 # Linear Solvers
 * **Dense Matrix Solver**
