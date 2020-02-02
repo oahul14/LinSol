@@ -17,6 +17,11 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 ```gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas main.cpp```
 * Note that feel free to use any compiler as long as it supports standard c++17;
 * If using Windows please have ```OpenBLAS``` installed first, or other open libraries that include ```<cblas.h>```.
+## Alternative Choice
+* For macOS the ```<Accelerate/Accelerate.h>``` is pre-built as part of the framework. 
+* To use it please comment out ```<cblas.h>``` in for files included it;
+* And then run like below:
+```gcc-9 -lstdc++ -framework Accelerate -flax-vector-conversions main.cpp ```
 
 # Linear Solvers
 * **Dense Matrix Solver**
@@ -66,16 +71,22 @@ Heath M.T., “Scientific computing: An introductory survey”, 2nd Internationa
 
 # Contributions
 * Sokratis Anagnostopoulos:
-	* 
+	* Cholesky dense/sparse; 
+	* Gauss-Seidel dense;
+	* Thomas methods; 
+	* Container tests and debugging;
+	* Report.
 * Hao Lu: 
 	* Implement LU decomposition for dense and sparse matrices; 
 	* Writing the main function UI and packaging tests in testing.cpp/.h; 
 	* Re-implement three dense solvers with low level BLAS functions; 
 	* Managing GitHub versions.
-	* Design BLAS function and testing structure; 
+	* Design BLAS function and testing structure;
+	* Debugging.
 * Lingaona Zhu:
 	* Implement Gauss-seidel method for sparse matrices; 
 	* Implement Jacobi method for dense and sparse matrices;
 	* Generate random matrices for testing; 
 	* Test solver performance; 
 	* Compare dense and sparse solver performance;
+	* Readproof: codes and report.
