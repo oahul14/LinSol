@@ -13,6 +13,12 @@
 using namespace std;
 
 template<class T>
+void xinit(T* x, int n);
+
+template<class T>
+void binit(T* b, int n, T* bog);
+
+template<class T>
 void printVec(T* x, int size, bool print);
 
 template<class T>

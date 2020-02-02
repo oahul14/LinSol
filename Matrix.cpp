@@ -26,13 +26,26 @@ Matrix<T>::Matrix(int rows, int cols, T* values_ptr):
 
 // copy constructor
 template<class T>
-Matrix<T>::Matrix(Matrix& B)
+Matrix<T>::Matrix(const Matrix& B)
 {
-	this->cols = B.cols;
-	this->rows = B.rows;
-	this->values.reset(B.values);
-	this->size_of_values = B.size_of_values;
+    //if it's an array pointer -> use a new array pointer to store
+    this->values.reset(new T[B.rows * B.cols]);
+    auto* my_a = new int[B.cols * B.rows];
+    for (int i = 0; i < B.cols * B.rows; i++)
+    {
+        my_a[i] = B.values[i];
+    }
+    //if it's values -> just copy
+    this->cols = B.cols; //copy the ints to this!
+    this->rows = B.rows;
+    this->size_of_values = B.size_of_values;
+    for (int i = 0; i < this->cols * this->rows; i++)
+    {
+        this->values[i] = my_a[i];
+    }
+    delete[] my_a; //when new call delete
 }
+
 
 // destructor
 template<class T>
@@ -208,14 +221,6 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
             }
         }
     }
-//    for (int i = 0; i < rows; i++)
-//    {
-//        for (int j = 0; j < rows; j++)
-//        {
-//            cout << ran_sparse[i * cols + j] << "  ";
-//        }
-//        cout << endl;
-//    }
     for (int i = 0; i < rows; i++)
     {
         for (int j = 0; j < rows; j++)
@@ -224,6 +229,53 @@ void Matrix<T>::genRanSparse(double sparsity, bool dom)
         }
     }
     
+}
+
+template<class T>
+void Matrix<T>::genRanTri(bool dom)
+{
+    //generate sparse matrix
+    int rows = this->rows;
+    int cols = this->cols;
+    shared_ptr<double[]> ran_tri(new double[rows * cols]); //cannot use unique_ptr since that the pointer will points to other directions
+    srand((unsigned)time(NULL)); //generate different random values
+    if (dom) ran_tri[0] = rand() % (rows * cols) + 50;
+    else ran_tri[0] = rand() % 10 + 1;
+    for (int i = 0; i < rows * cols; i++)
+    {
+        ran_tri[i] = 0;
+    }
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            if (i == j) //the diagonal values
+            {
+                ran_tri[i * cols + j] = rand() % (rows*cols) + 100; //set the dominant matrix
+            }
+            else if (i == j + 1)
+            {
+                ran_tri[i * cols + j] = rand() % 50 + 10;
+            }
+        }
+    }
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            if (j == i + 1)
+            {
+                ran_tri[i * cols + j] = ran_tri[j * cols + i];
+            }
+        }
+    }
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < rows; j++)
+        {
+            this->values[i * cols + j] = ran_tri[i * cols + j];
+        }
+    }
 }
 
 template<class T>
@@ -276,30 +328,33 @@ void Matrix<T>::matVecMult(T* vec, T* output)
 };
 
 template<class T>
-void Matrix<T>::matMatMult_colMajor(Matrix& mat_right, Matrix& output)
+void Matrix<T>::forward_sub(T* output, T* b)
 {
-	if (this->cols != mat_right.rows)
-	{
-		std::cerr << "input dimensions dont match" << std::endl;
-		return;
-	}
+    const int m = this->rows;
+    for (int k = 0; k < m; k++)
+    {
+        T s(0);
+        for (int j = 0; j < k; j++)
+        {
+            s += this->values[k * m + j] * output[j];
+        }
+        output[k] = (b[k] - s) / this->values[k * m + k];
+    }
+}
 
-	for (int i = 0; i < output.size_of_values; i++)
-	{
-		output.values[i] = 0;
-	}
+template<class T>
+void Matrix<T>::backward_sub(T* output, T* b)
+{
+    const int m = this->rows;
 
-	for (int j = 0; j < mat_right.cols; j++)
-	{
-		for (int k = 0; k < this->cols; k++)
-		{
-			for (int i = 0; i < this->rows; i++)
-			{
-				output.values[i * output.cols + j] +=
-					this->values[i * this->cols + k] *
-					mat_right.values[k * mat_right.cols + j];
-			}
-		}
-	}
-};
+    for (int k = m - 1; k >= 0; --k)
+    {
+        T s(0);
+        for (int j = k + 1; j < m; j++)
+        {
+            s += this->values[k * m + j] * output[j];
+        }
+        output[k] = (b[k] - s) / this->values[k * m + k];
+    }
+}
 

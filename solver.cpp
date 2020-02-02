@@ -4,13 +4,21 @@
 #include <Accelerate/Accelerate.h>
 
 template<class T>
-void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
+void LU_dense(Matrix<T>& A, T* x, T* b)
 {
-	const int m = A.cols;
+    if (A.rows != A.cols)
+    {
+        cerr << "Cannot decompose non-square matrix into LU. \n";
+        return;
+    }
+
+    const int m = A.cols;
+    auto* L = new Matrix<T>(m, m, true);
+    auto* P_ = new Matrix<T>(m, m, true);
 	// create an empty matrix L
 	for (int i = 0; i < m * m; i++)
 	{
-		L.values[i] = 0;
+		L->values[i] = 0;
 	}
 
 	// create eye matrix P_
@@ -18,8 +26,8 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 	{
 		for (int j = 0; j < m; j++)
 		{
-			if (i == j) { P_.values[i * m + j] = 1; }
-			else P_.values[i * m + j] = 0;
+			if (i == j) { P_->values[i * m + j] = 1; }
+			else P_->values[i * m + j] = 0;
 		}
 	}
 
@@ -46,14 +54,14 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
             A.values[j * A.rows + i] = *numA;
             
             T* numP_ = new T;
-            *numP_ = P_.values[k * P_.rows + i];
-            P_.values[k * P_.rows + i] = P_.values[j * P_.rows + i];
-            P_.values[j * P_.rows + i] = *numP_;
+            *numP_ = P_->values[k * P_->rows + i];
+            P_->values[k * P_->rows + i] = P_->values[j * P_->rows + i];
+            P_->values[j * P_->rows + i] = *numP_;
             
             T* numL = new T;
-            *numL = L.values[k * L.rows + i];
-            L.values[k * L.rows + i] = L.values[j * L.rows + i];
-            L.values[j * L.rows + i] = *numL;
+            *numL = L->values[k * L->rows + i];
+            L->values[k * L->rows + i] = L->values[j * L->rows + i];
+            L->values[j * L->rows + i] = *numL;
             
             delete numA;
             delete numP_;
@@ -62,7 +70,7 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 		for (int i = k + 1; i < m; i++)
 		{
 			const double s = A.values[i * m + k] / A.values[k * m + k];
-			L.values[i * m + k] = s;
+			L->values[i * m + k] = s;
 			for (int j = k; j < m; j++)
 			{
 				A.values[i * m + j] -= A.values[k * m + j] * s;
@@ -75,73 +83,133 @@ void LU_decomposition_pp(Matrix<T>& A, Matrix<T>& L, Matrix<T>& P_)
 	{
 		for (int j = 0; j < m; j++)
 		{
-			if (i == j) { L.values[i * m + j] = 1; }
+			if (i == j) { L->values[i * m + j] = 1; }
 		}
 	}
-	// get the transpose of P_
-	P_.transpose(P_);
+    
+    auto* pinvb = new double[m * 1];
+    P_->matVecMult(b, pinvb);
+    auto* y = new double[m * 1];
+    L->forward_sub(y, pinvb);
+    A.backward_sub(x, y);
+
+    delete L;
+    delete P_;
+    delete[] pinvb;
+    delete[] y;
 }
 
 template<class T>
-void backward_substitution(Matrix<T>& U, T* output, T* b)
+void LU_dense_blas(Matrix<T>& A, T* x, T* b)
 {
-	const int m = U.rows;
+    if (A.rows != A.cols)
+    {
+        cerr << "Cannot decompose non-square matrix into LU. \n";
+        return;
+    }
 
-	for (int k = m - 1; k >= 0; --k)
-	{
-		T s(0);
-		for (int j = k + 1; j < m; j++)
-		{
-			s += U.values[k * m + j] * output[j];
-		}
-		output[k] = (b[k] - s) / U.values[k * m + k];
-	}
-}
+    const int m = A.cols;
+    auto* L = new Matrix<T>(m, m, true);
+    auto* P_ = new Matrix<T>(m, m, true);
+    // create an empty matrix L
+    for (int i = 0; i < m * m; i++)
+    {
+        L->values[i] = 0;
+    }
 
-template<class T>
-void forward_substitution(Matrix<T>& L, T* output, T* b)
-{
-	const int m = L.rows;
-	for (int k = 0; k < m; k++)
-	{
-		T s(0);
-		for (int j = 0; j < k; j++)
-		{
-			s += L.values[k * m + j] * output[j];
-		}
-		output[k] = (b[k] - s) / L.values[k * m + k];
-	}
-}
+    // create eye matrix P_
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            if (i == j) { P_->values[i * m + j] = 1; }
+            else P_->values[i * m + j] = 0;
+        }
+    }
 
-template<class T>
-void LU_dense(Matrix<T>& A, T* x, T* b)
-{
-	if (A.rows != A.cols)
-	{
-		cerr << "Cannot decompose non-square matrix into LU. \n";
-		return;
-	}
+    for (int k = 0; k < m - 1; k++)
+    {
+        // partial pivotisation
+        // find max value in the current col
+        int index = k * A.cols + k;
+        for (int i = k; i < A.cols; i++)
+        {
+            if (abs(A.values[i * A.cols + k]) > abs(A.values[index]))
+            {
+                index = i * A.cols + k;
+            }
+        }
+        int j = index / A.cols;
+        
+        // swap the rows
+        for (int i = 0; i < A.cols; i++)
+        {
+            T* numA = new T;
+            *numA = A.values[k * A.rows + i];
+            A.values[k * A.rows + i] = A.values[j * A.rows + i];
+            A.values[j * A.rows + i] = *numA;
+            
+            T* numP_ = new T;
+            *numP_ = P_->values[k * P_->rows + i];
+            P_->values[k * P_->rows + i] = P_->values[j * P_->rows + i];
+            P_->values[j * P_->rows + i] = *numP_;
+            
+            T* numL = new T;
+            *numL = L->values[k * L->rows + i];
+            L->values[k * L->rows + i] = L->values[j * L->rows + i];
+            L->values[j * L->rows + i] = *numL;
+            
+            delete numA;
+            delete numP_;
+            delete numL;
+        }
+        
+        T* Avec_current = new T[m - k];
+        for (int j = k; j < m; j++)
+        {
+            Avec_current[j] = A.values[k * m + j];
+        }
+        
+        for (int i = k + 1; i < m; i++)
+        {
+            const double s = A.values[i * m + k] / A.values[k * m + k];
+            L->values[i * m + k] = s;
+            
+            T* Avec_found = new T[m - k];
+            for (int j = k; j < m; j++)
+            {
+                Avec_found[j] = A.values[i * m + j];
+            }
+            cblas_daxpy(m - k, s, Avec_current, 1, Avec_found, 1);
+            for (int j = k; j < m; j++)
+            {
+                A.values[i * m + j] = Avec_found[j];
+            }
+            cout << "-----" << endl;
+            delete[] Avec_found;
+        }
+        delete[] Avec_current;
+    }
 
-	const int m = A.cols;
-	auto* L = new Matrix<T>(m, m, true);
-	auto* P = new Matrix<T>(m, m, true);
-	LU_decomposition_pp(A, *L, *P);
-	
-	// A is now the upper triangle
-	// get the inverse i.e. the transpose of P
-	P->transpose(*P);
+    // add diagnal eye into L
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            if (i == j) { L->values[i * m + j] = 1; }
+        }
+    }
+    
+    auto* pinvb = new double[m * 1];
+    P_->matVecMult(b, pinvb);
+    auto* y = new double[m * 1];
+    L->forward_sub(y, pinvb);
+    A.backward_sub(x, y);
 
-	auto* pinvb = new double[m * 1];
-	P->matVecMult(b, pinvb);
-
-	auto* y = new double[m * 1];
-	forward_substitution(*L, y, pinvb);
-	backward_substitution(A, x, b);
-
-	delete L;
-	delete P;
-	delete[] pinvb;
-	delete[] y;
+    delete L;
+    delete P_;
+    delete[] pinvb;
+    delete[] y;
 }
 
 template<class T>
@@ -1123,8 +1191,8 @@ void cholesky_fact(Matrix<T>& A, T* x, T* b) {
         }
     }
 
-    auto* au = new Matrix<T>(n, n, true);
-    auto* al = new Matrix<T>(n, n, true);
+    Matrix<T>* au = new Matrix<T>(n, n, true);
+    Matrix<T>* al = new Matrix<T>(n, n, true);
 
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
@@ -1139,11 +1207,10 @@ void cholesky_fact(Matrix<T>& A, T* x, T* b) {
         }
     }
 
-    auto* y = new double[n];
+    double* y = new double[n];
     *y = b[0] / al->values[0];
-
-    forward_substitution(*al, b, y);
-    backward_substitution(*au, y, x);
+    al->forward_sub(y, b);
+    au->backward_sub(x, y);
 
     delete al;
     delete au;
@@ -1170,13 +1237,14 @@ void cholesky_dense(Matrix<T>& A, T* x, T* b) {
             }
         }
     }
+    
     cholesky_fact(A, x, b);
 }
 
 
 template<class T>
-void cholesky_sparse(Matrix<T>& A, T* x, T* b) {
-
+void cholesky_sparse(Matrix<T>& A, T* x, T* b)
+{
     int i, j, k;
     int n = A.rows;
     int* sk = new int[n + 1];

@@ -19,7 +19,7 @@ public:
 	Matrix(int rows, int cols, T* values_ptr);
 
 	// copy constructor
-	Matrix(Matrix &B);
+	Matrix(const Matrix &B);
 
 	// destructor
 	// virtual ~Matrix() = 0; pure virtual function: the sub class MUST overwrite this func
@@ -34,9 +34,11 @@ public:
     // generate random n x n matrix
     void genRanDense(bool dom);
     void genRanSparse(double sparsity, bool dom);
+    void genRanTri(bool dom);
 	void matMatMult(Matrix& mat_right, Matrix& output);
 	void matVecMult(T* vec, T* output);
-	void matMatMult_colMajor(Matrix& mat_right, Matrix& output);
+    void forward_sub(T* x, T* b);
+    void backward_sub(T* x, T* b);
 	
 	/////// public variables
 	// matrix size;

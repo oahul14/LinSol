@@ -24,10 +24,8 @@ public:
     void matMatMult(CSRMatrix<T>& mat_right, CSRMatrix<T>& output);
     void fromDense(Matrix<T>& dense_in);
     
-    void LU_decomposition(int* p_col);
     void forward_substitution(T* b, T* output);
     void backward_substitution(T* b, T* output);
-    void LU_solver(T* b, T* output);
 
     // Explicitly using the C++11 nullptr here
     unique_ptr<int[]> row_position;
