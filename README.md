@@ -63,3 +63,19 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 * Davis T.A., Rajamanickam S. and Sid-Lakhdar W.M., “A survey of direct methods for sparse linear systems”, Technical Report, Department of Computer Science and Engineering, Texas A&M Univ, April 2016.
 * Fausett L.V., “Applied numerical analysis using Matlab”, 2nd Editions, Pearson Eduction Inc., 2008.
 Heath M.T., “Scientific computing: An introductory survey”, 2nd International Edition, McGraw-Hill, 2002.
+
+# Contributions
+* Sokratis Anagnostopoulos:
+	* 
+* Hao Lu: 
+	* Implement LU decomposition for dense and sparse matrices; 
+	* Writing the main function UI and packaging tests in testing.cpp/.h; 
+	* Re-implement three dense solvers with low level BLAS functions; 
+	* Managing GitHub versions.
+	* Design BLAS function and testing structure; 
+* Lingaona Zhu:
+	* Implement Gauss-seidel method for sparse matrices; 
+	* Implement Jacobi method for dense and sparse matrices;
+	* Generate random matrices for testing; 
+	* Test solver performance; 
+	* Compare dense and sparse solver performance;
