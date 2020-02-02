@@ -36,7 +36,6 @@
 	* Thomas Algorithm
 
 ## Parameters
-$Ax = b$
 * **Regular Parameters:**
 	* A the left hand side matrix
 	* b the right hand side constants
