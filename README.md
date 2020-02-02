@@ -43,3 +43,6 @@
 	* maxit: maximum iteration time
 	* tolerance: tolerance/criterion to stop the iteration
 	* relaxation factor: for more stable performance
+
+# Additional Notes
+* Rewritten solvers using BLAS subroutines doesn't include detailed comments. Please find it in its dense only version.
