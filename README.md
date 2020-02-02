@@ -1,5 +1,10 @@
 # acse-5-assignment-nan
 
+# Group Member
+* Sokratis Anagnostopoulos
+* Lingaona Zhu
+* Hao Lu
+
 ### Current schedule
 
 #### By Sunday
