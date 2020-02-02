@@ -21,25 +21,26 @@
 * If using Windows please have OpenBLAS installed first, or other open libraries that include cblas.h
 
 # Linear Solvers
-* Dense Matrix Solver
-	1. Gaussian Elimination
-	2. LU Decomposition
-	3. Gauss-Seidel Iteration
-	4. Jacobi Iteration
-	5. Cholesky Factorisation
-* Sparse Matrix Solver
-	1. LU Decomposition
-	2. Gauss-Seidel Iteration
-	3. Jacobi Iteration
-	4. Cholesky Factorisation
-* Tridiagonal (banded) Matrix
+* **Dense Matrix Solver**
+	* Gaussian Elimination
+	* LU Decomposition
+	* Gauss-Seidel Iteration
+	* Jacobi Iteration
+	* Cholesky Factorisation
+* **Sparse Matrix Solver**
+	* LU Decomposition
+	* Gauss-Seidel Iteration
+	* Jacobi Iteration
+	* Cholesky Factorisation
+* **Tridiagonal (banded) Matrix**
 	* Thomas Algorithm
 
 ## Parameters
 $$Ax = b$$
-* A the left hand side matrix
-* b the right hand side constants
-* For iterative solvers:
-	1. maxit: maximum iteration time
-	2. tolerance: tolerance/criterion to stop the iteration
-	3. relaxation factor: for more stable performance
+* **Regular Parameters:**
+	* A the left hand side matrix
+	* b the right hand side constants
+* **Parameters for iterative solvers:**
+	* maxit: maximum iteration time
+	* tolerance: tolerance/criterion to stop the iteration
+	* relaxation factor: for more stable performance
