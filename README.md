@@ -87,6 +87,6 @@ Heath M.T., “Scientific computing: An introductory survey”, 2nd Internationa
 	* Implement Gauss-seidel method for sparse matrices; 
 	* Implement Jacobi method for dense and sparse matrices;
 	* Generate random matrices for testing; 
-	* Test solver performance; 
+	* Test solver performance and generate graphs; 
 	* Compare dense and sparse solver performance;
 	* Readproof: codes and report.
