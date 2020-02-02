@@ -71,6 +71,7 @@ Heath M.T., “Scientific computing: An introductory survey”, 2nd Internationa
 
 # Contributions
 * Sokratis Anagnostopoulos:
+	* Implement Gauss Elimination;
 	* Implement Cholesky dense/sparse; 
 	* Implement Gauss-Seidel dense;
 	* Implement Thomas methods; 
