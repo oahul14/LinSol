@@ -637,10 +637,13 @@ void time_all_given(int n, T* mat_array, T* b, bool print)
     
     auto* x = new T[rows * 1];
     auto* bog = new T[rows * 1];
+    cout << "\nRHS: [";
     for (int i = 0; i < n; i++)
     {
         bog[i] = b[i];
+        cout << b[i] << " ";
     }
+    cout << "]" << endl;
     
     // ***************  Tests  ****************
     // gauss elimination
