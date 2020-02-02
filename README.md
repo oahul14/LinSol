@@ -5,28 +5,13 @@
 * Lingaona Zhu
 * Hao Lu
 
-### Current schedule
-
-#### By Sunday
-
-1. Jacobi sparse - Ling
-2. LU decomposition sparse - Hao
-3. Gauss-Seidel - Sokratis
-
-#### The Rest
-
-1. Check if the input matrix is sparse or not
-2. Optimisation
-	* vecorisation
-	* BLAS/LAPACK
-	* smart pointers
-3. Tests
-	* size compatibility
-	* compare different solver results
-	* compare if solver for sparse and dense are consistent
-	* using actual from other resources
-4. compare containers of ONE solver, includes:
-	* vector of vectors
-	* vector
-	* pointers
-	* smart pointers
+# BLAS Pre-requisites
+* Have OpenBLAS installed to recogonise <cblas.h>
+* To make sure it compiles, the path of installed OpenBLAS need to be exported first:
+	* Below is the example used in macOS
+	brew install OpenBLAS
+	export LDFLAGS="-L/usr/local/opt/openblas/lib"
+  	export CPPFLAGS="-I/usr/local/opt/openblas/include"
+* Then in the command line compile using: 
+	gcc-9 -lstdc++ -g -I/usr/local/opt/openblas/include -L/usr/local/opt/openblas/lib -lopenblas try_blas.cpp 
+* If using Windows please have OpenBLAS installed first, or other open libraries that include cblas.h
