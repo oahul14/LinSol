@@ -6,7 +6,7 @@
 * Hao Lu
 
 # BLAS Pre-requisites
-* Have OpenBLAS installed to recogonise <cblas.h>
+* Have ```OpenBLAS``` installed to recogonise <cblas.h>
 * To make sure it compiles, the path of installed OpenBLAS need to be exported first (Below is the example used in macOS)
 ```
 brew install OpenBLAS
