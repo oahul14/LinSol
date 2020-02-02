@@ -33,6 +33,19 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 	* Cholesky Factorisation
 * **Tridiagonal (banded) Matrix**
 	* Thomas Algorithm
+	
+## Detailed Intro for Solvers
+* In our work we select to program the following methods:
+### A. Direct Solvers
+1. The direct Gauss elimination for dense matrices can produce quite accurate results for small systems of the order of 15 equations, but also for larger arrays when using double precision accuracy.
+2. A special algorithm for tridiagonal matrices, the Thomas method [Davis, 2016], in order to handle a banded sparse matrix with a direct solver. 
+3. The LU decomposition as a second direct solver for dense matrices, which belongs to the matrix factorisation methods. In this case, a special LU solver is also developed in order to handle regular or irregular sparse matrices with a direct method.
+4. The Cholesky factorisation method is also implemented for symmetric matrices, which uses only half of computer memory and flops to solve a system, compared to Gauss elimination of LU decomposition methods. The right-locking procedure is adopted [Heath, 2002], and a technique to address sparse symmetric matrices is also tested.
+
+
+### B. Iterative Solvers
+1. Jacobi method for dense matrices and also a modified version to handle sparse matrices. The Jacobi method is very suitable for parallelisation, since the solution is updated only after completion of every iteration.
+2. The Gauss Seidel method with relaxation is also examined to apply a different updating procedure, as also the under/over relaxation technique.
 
 ## Parameters
 * **Regular Parameters:**
@@ -45,3 +58,9 @@ export CPPFLAGS="-I/usr/local/opt/openblas/include"
 
 # Additional Notes
 * Rewritten solvers using BLAS subroutines have no detailed comments. Please find it in its dense only version.
+
+# References
+
+* Davis T.A., Rajamanickam S. and Sid-Lakhdar W.M., “A survey of direct methods for sparse linear systems”, Technical Report, Department of Computer Science and Engineering, Texas A&M Univ, April 2016.
+* Fausett L.V., “Applied numerical analysis using Matlab”, 2nd Editions, Pearson Eduction Inc., 2008.
+Heath M.T., “Scientific computing: An introductory survey”, 2nd International Edition, McGraw-Hill, 2002.
